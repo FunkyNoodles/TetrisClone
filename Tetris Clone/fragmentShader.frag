@@ -1,9 +1,10 @@
 #version 330 core
-in vec4 vertexColor; // The input variable from the vertex shader (same name and same type)
-  
-out vec4 color;
+in vec3 ourColor;
 
+out vec4 color;
+//uniform vec4 ourColor;
 void main()
 {
-    color = vertexColor;
-} 
+    color = vec4(ourColor, 1.0f);
+	//color = ourColor;
+}
