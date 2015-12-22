@@ -11,6 +11,11 @@
 // Image loader
 #include <SOIL.h>
 
+// GLM
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+
 // Other includes
 #include "Shader.h"
 
@@ -48,13 +53,13 @@ int main()
 
 
 	// Build and compile our shader program
-	Shader ourShader("vertexShader.vert", "fragmentShader.frag");
+	Shader shader("vertexShader.vert", "fragmentShader.frag");
 
 
 	// Set up vertex data (and buffer(s)) and attribute pointers
 	GLfloat vertices[] = {
 		// Positions          // Colors           // Texture Coords
-		0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   2.0f, 1.0f,   // Top Right
+		0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top Right
 		0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom Right
 		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom Left
 		-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Top Left 
@@ -112,6 +117,18 @@ int main()
 	SOIL_free_image_data(image);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+
+
+
+	glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
+	
+	
+	//trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
+	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+
+	GLuint transformLoc = glGetUniformLocation(shader.Program, "transform");
+	
+
 	// Game loop
 	//GLfloat timeValue, greenValue;
 	while (!glfwWindowShouldClose(window))
@@ -129,14 +146,26 @@ int main()
 		//greenValue = (sin(timeValue) / 2) + 0.5;
 		//GLint vertextColorLocation = glGetUniformLocation(ourShader.Program, "ourColor");
 
-		ourShader.Use();
+		
 		//glUniform4f(vertextColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture1);
-		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture1"), 0);
+		glUniform1i(glGetUniformLocation(shader.Program, "ourTexture1"), 0);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture2);
-		glUniform1i(glGetUniformLocation(ourShader.Program, "ourTexture2"), 1);
+		glUniform1i(glGetUniformLocation(shader.Program, "ourTexture2"), 1);
+		
+
+		// Activate shader
+		shader.Use();
+
+		// Create transformation
+		glm::mat4 trans;
+		trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+		trans = glm::rotate(trans, (GLfloat)glfwGetTime()*5.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+		// Draw container
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);

@@ -69,7 +69,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>D:\Resources\OpenGL\include\GL;D:\Resources\OpenGL\include\GLFW;D:\Resources\Simple OpenGL Image Library\src;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Resources\OpenGL\include\GL;D:\Resources\OpenGL\include\GLFW;D:\Resources\Simple OpenGL Image Library\src;D:\Resources\glm-0.9.7.1\glm;$(IncludePath)</IncludePath>
     <LibraryPath>D:\Resources\OpenGL\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
