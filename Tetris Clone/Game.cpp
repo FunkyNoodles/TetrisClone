@@ -22,13 +22,28 @@
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
+void clearGrid();
+
 // Windows
 const GLuint WIDTH = 800, HEIGHT = 600;
 
-// Variables
-bool fullscreen = false;
+// GL Variables
 GLFWmonitor* monitor;
 GLFWvidmode* desktopMode;
+
+// Game Variables
+bool fullscreen = false;
+/*
+ * 0 - nothing
+ * 1 - occupied by I
+ * 2 - occupied by J
+ * 3 - occupied by L
+ * 4 - occupied by O
+ * 5 - occupied by S
+ * 6 - occupied by T
+ * 7 - occupied by Z
+ */
+short grid[10][22];
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -283,4 +298,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		window = glfwCreateWindow(desktopMode->width, desktopMode->height, "Damn", monitor, nullptr);
 		glfwMakeContextCurrent(window);
 	}*/
+}
+
+void clearGrid() {
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 22; j++)
+		{
+			grid[i][j] = 0;
+		}
+	}
 }
