@@ -55,21 +55,21 @@ struct Block{
 	
 	Block(int column, int row, int value) {
 		// Lower left corner pos
-		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2);
-		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2);
-		vertices[2] = 0.0;
+		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
+		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
+		vertices[2] = 1.0;
 		// Lower right corner pos
-		vertices[6] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2);
-		vertices[7] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2);
-		vertices[8] = 0.0;
+		vertices[6] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
+		vertices[7] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
+		vertices[8] = 1.0;
 		// Upper left corner pos
-		vertices[12] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2);
-		vertices[13] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2);
-		vertices[14] = 0.0;
+		vertices[12] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
+		vertices[13] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
+		vertices[14] = 1.0;
 		// Upper right corner pos
-		vertices[18] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2);;
-		vertices[19] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2);
-		vertices[20] = 0.0;
+		vertices[18] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
+		vertices[19] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
+		vertices[20] = 1.0;
 		// Color is the same so a loop will do
 		for (int i = 0; i < 4; i++)
 		{
@@ -121,19 +121,13 @@ struct Block{
 				break;
 			}
 		}
-		
 		indices[0] = 0;
 		indices[1] = 1;
 		indices[2] = 2;
 		indices[3] = 1;
 		indices[4] = 2;
 		indices[5] = 3;
-		
-	}
 
-	void render() {
-		Shader backColumnsShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
-		//backColumnsShader.Use();
 		glGenVertexArrays(1, &VAO);
 		glGenBuffers(1, &VBO);
 		glGenBuffers(1, &EBO);
@@ -142,9 +136,8 @@ struct Block{
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-		glBindBuffer(GL_ARRAY_BUFFER, EBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 		// Position attribute
 		glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)0);
@@ -152,11 +145,16 @@ struct Block{
 		// Color attribute
 		glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)(3 * sizeof(GLdouble)));
 		glEnableVertexAttribArray(1);
+		glBindVertexArray(0);
+	}
 
-
-		/*glBindVertexArray(VAO);
+	void render() {
+		Shader blockShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+		blockShader.Use();
+		glBindVertexArray(VAO);
+		//glDrawArrays(GL_TRIANGLES, 0, 4);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);*/
+		glBindVertexArray(0);
 	}
 
 	~Block() {
@@ -198,7 +196,6 @@ int main()
 
 	// Build and compile shader program
 	Shader backColumnsShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
-	
 
 	// Basic tile information
 	int pixelX = 0; // number of pixels from left border
@@ -301,9 +298,6 @@ int main()
 	// Color attribute
 	glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)(3 * sizeof(GLdouble)));
 	glEnableVertexAttribArray(1);
-	// Texture attribute
-	//glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
-	//glEnableVertexAttribArray(2);
 
 	glBindVertexArray(0); // Unbind VAO
 
@@ -338,12 +332,6 @@ int main()
 	GLuint transformLoc = glGetUniformLocation(backColumnsShader.Program, "transform");
 	
 	Block* testBlock = new Block(0, 0, 1);
-	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	//testBlock->render();
-	glfwSwapBuffers(window);
-	
-	
 
 	// Game loop
 	//GLfloat timeValue, greenValue;
@@ -377,19 +365,19 @@ int main()
 
 		// Draw container
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-
-
+		
+		//std::cout << testBlock->vertices[0] << " " << testBlock->vertices[1] << " " << testBlock->vertices[2] << std::endl;
 		testBlock->render();
-		glBindVertexArray(testBlock->VAO);
+
+		/*glBindVertexArray(testBlock->VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(testBlock->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-		//testBlock->render();
+		glBindVertexArray(0);*/
 		//std::cout << testBlock->vertices[10] << std::endl;
 		
-
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
 	}
