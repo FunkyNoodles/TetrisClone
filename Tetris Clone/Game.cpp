@@ -25,7 +25,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void clearGrid();
 
 // Windows
-const GLuint WIDTH = 800, HEIGHT = 600;
+const int WIDTH = 800, HEIGHT = 600;
 
 // GL Variables
 GLFWmonitor* monitor;
@@ -33,6 +33,9 @@ GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
+const int TILE_WIDTH = HEIGHT / 20; // Tile width of a tile is demermined by window pixel height
+const short GRID_WIDTH = 10;
+const short GRID_HEIGHT = 20;
 /*
  * 0 - nothing
  * 1 - occupied by I
@@ -43,7 +46,126 @@ bool fullscreen = false;
  * 6 - occupied by T
  * 7 - occupied by Z
  */
-short grid[10][22];
+short grid[GRID_WIDTH][GRID_HEIGHT];
+
+struct Block{
+	GLdouble vertices[24]; // 3 pos 3 color
+	GLuint indices[6];
+	GLuint VAO, VBO, EBO;
+	
+	Block(int column, int row, int value) {
+		// Lower left corner pos
+		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2);
+		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2);
+		vertices[2] = 0.0;
+		// Lower right corner pos
+		vertices[6] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2);
+		vertices[7] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2);
+		vertices[8] = 0.0;
+		// Upper left corner pos
+		vertices[12] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2);
+		vertices[13] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2);
+		vertices[14] = 0.0;
+		// Upper right corner pos
+		vertices[18] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2);;
+		vertices[19] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2);
+		vertices[20] = 0.0;
+		// Color is the same so a loop will do
+		for (int i = 0; i < 4; i++)
+		{
+			switch (value)
+			{
+			case 1:
+				// Cyan
+				vertices[6 * i + 3] = 0.0;
+				vertices[6 * i + 4] = 1.0;
+				vertices[6 * i + 5] = 1.0;
+				break;
+			case 2:
+				// Blue
+				vertices[6 * i + 3] = 0.0;
+				vertices[6 * i + 4] = 0.0;
+				vertices[6 * i + 5] = 1.0;
+				break;
+			case 3:
+				// Orange
+				vertices[6 * i + 3] = 1.0;
+				vertices[6 * i + 4] = 0.6470588235;
+				vertices[6 * i + 5] = 0.0;
+				break;
+			case 4:
+				// Yellow
+				vertices[6 * i + 3] = 1.0;
+				vertices[6 * i + 4] = 1.0;
+				vertices[6 * i + 5] = 0.0;
+				break;
+			case 5:
+				// Green
+				vertices[6 * i + 3] = 0.0;
+				vertices[6 * i + 4] = 1.0;
+				vertices[6 * i + 5] = 0.0;
+				break;
+			case 6:
+				// Purple
+				vertices[6 * i + 3] = 0.6666666667;
+				vertices[6 * i + 4] = 0.0;
+				vertices[6 * i + 5] = 1.0;
+				break;
+			case 7:
+				// Orange
+				vertices[6 * i + 3] = 1.0;
+				vertices[6 * i + 4] = 0.0;
+				vertices[6 * i + 5] = 0.0;
+				break;
+			default:
+				break;
+			}
+		}
+		
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+		indices[3] = 1;
+		indices[4] = 2;
+		indices[5] = 3;
+		
+	}
+
+	void render() {
+		Shader backColumnsShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+		//backColumnsShader.Use();
+		glGenVertexArrays(1, &VAO);
+		glGenBuffers(1, &VBO);
+		glGenBuffers(1, &EBO);
+
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, EBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+
+		// Position attribute
+		glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+		// Color attribute
+		glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)(3 * sizeof(GLdouble)));
+		glEnableVertexAttribArray(1);
+
+
+		/*glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);*/
+	}
+
+	~Block() {
+		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
+	}
+};
+
+Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -57,7 +179,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Teris Clone", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow((GLuint)WIDTH, (GLuint)HEIGHT, "Teris Clone", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Set the required callback functions
@@ -74,11 +196,11 @@ int main()
 	// Get monitor
 	monitor = glfwGetPrimaryMonitor();
 
-	// Build and compile our shader program
-	Shader shader("vertexShader.vert", "fragmentShader.frag");
+	// Build and compile shader program
+	Shader backColumnsShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+	
 
 	// Basic tile information
-	int tileWidth = HEIGHT / 20; // Tile width is demermined by window pixel height
 	int pixelX = 0; // number of pixels from left border
 	int pixelY = 0; // number of pixels from bottom border
 	// Coords, center is 0,0, corners are +/-1
@@ -100,26 +222,26 @@ int main()
 			switch (j)
 			{
 			case 0:
-				pixelX = WIDTH - tileWidth*(10 - i);
+				pixelX = WIDTH - TILE_WIDTH*(10 - i);
 				pixelY = 0;
 				break;
 			case 1:
-				pixelX = WIDTH - tileWidth*(9 - i);
+				pixelX = WIDTH - TILE_WIDTH*(9 - i);
 				pixelY = 0;
 				break;
 			case 2:
-				pixelX = WIDTH - tileWidth*(10 - i);
+				pixelX = WIDTH - TILE_WIDTH*(10 - i);
 				pixelY = HEIGHT;
 				break;
 			case 3:
-				pixelX = WIDTH - tileWidth*(9 - i);
+				pixelX = WIDTH - TILE_WIDTH*(9 - i);
 				pixelY = HEIGHT;
 				break;
 			default:
 				break;
 			}
-			coordX = (double)(pixelX - (int)WIDTH / 2) / ((int)WIDTH / 2);
-			coordY = (double)(pixelY - (int)HEIGHT / 2) / ((int)HEIGHT / 2);
+			coordX = (double)(pixelX - WIDTH / 2) / (WIDTH / 2);
+			coordY = (double)(pixelY - HEIGHT / 2) / (HEIGHT / 2);
 			backColumnVertices[6 * (4 * i + j)] = coordX; // posX
 			backColumnVertices[6 * (4 * i + j) + 1] = coordY; // posY
 			backColumnVertices[6 * (4 * i + j) + 2] = 0.0; // posZ 2D game, so 0
@@ -139,15 +261,6 @@ int main()
 			
 		}
 	}
-
-	/*for (int i = 0; i < 240; i++)
-	{
-		if (i%6==0)
-		{
-			std::cout << std::endl;
-		}
-		std::cout << backColumnVertices[i] << "  ";
-	}*/
 
 	// Fill backColumnIndices
 	for (int i = 0; i < 10; i++)
@@ -222,7 +335,14 @@ int main()
 	//trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
 	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
 
-	GLuint transformLoc = glGetUniformLocation(shader.Program, "transform");
+	GLuint transformLoc = glGetUniformLocation(backColumnsShader.Program, "transform");
+	
+	Block* testBlock = new Block(0, 0, 1);
+	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//testBlock->render();
+	glfwSwapBuffers(window);
+	
 	
 
 	// Game loop
@@ -247,7 +367,7 @@ int main()
 		glUniform1i(glGetUniformLocation(shader.Program, "ourTexture2"), 1);*/
 
 		// Activate shader
-		shader.Use();
+		backColumnsShader.Use();
 
 		// Create transformation
 		//glm::mat4 trans;
@@ -261,12 +381,22 @@ int main()
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
+
+		testBlock->render();
+		glBindVertexArray(testBlock->VAO);
+		glDrawElements(GL_TRIANGLES, sizeof(testBlock->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+		//testBlock->render();
+		//std::cout << testBlock->vertices[10] << std::endl;
+		
+
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
 	}
 	// Properly de-allocate all resources once they've outlived their purpose
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
+	delete testBlock;
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
@@ -275,8 +405,6 @@ int main()
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-
-
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
@@ -298,14 +426,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		window = glfwCreateWindow(desktopMode->width, desktopMode->height, "Damn", monitor, nullptr);
 		glfwMakeContextCurrent(window);
 	}*/
+
+	if (key == GLFW_KEY_T && action == GLFW_PRESS)
+	{
+	}
 }
 
 void clearGrid() {
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < GRID_WIDTH; i++)
 	{
-		for (int j = 0; j < 22; j++)
+		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
 			grid[i][j] = 0;
+			delete gridBlock[i][j];
 		}
 	}
 }

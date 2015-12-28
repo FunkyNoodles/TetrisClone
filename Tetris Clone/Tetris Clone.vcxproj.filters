@@ -23,8 +23,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="fragmentShader.frag" />
-    <None Include="vertexShader.vert" />
+    <None Include="backColumnFragmentShader.frag" />
+    <None Include="backColumnVertexShader.vert" />
+    <None Include="blockVertexShader.vert" />
+    <None Include="blockFragmentShader.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
