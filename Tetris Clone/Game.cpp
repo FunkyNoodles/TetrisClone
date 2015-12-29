@@ -23,6 +23,8 @@
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
 void clearGrid();
+void renderBlocks();
+void updateGridBlocks();
 
 // Windows
 const int WIDTH = 800, HEIGHT = 600;
@@ -33,9 +35,10 @@ GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
-const int TILE_WIDTH = HEIGHT / 20; // Tile width of a tile is demermined by window pixel height
+
 const short GRID_WIDTH = 10;
 const short GRID_HEIGHT = 20;
+const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermined by window pixel height
 /*
  * 0 - nothing
  * 1 - occupied by I
@@ -52,8 +55,10 @@ struct Block{
 	GLdouble vertices[24]; // 3 pos 3 color
 	GLuint indices[6];
 	GLuint VAO, VBO, EBO;
+	int colorValue;
 	
 	Block(int column, int row, int value) {
+		colorValue = value;
 		// Lower left corner pos
 		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
 		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
@@ -152,7 +157,6 @@ struct Block{
 		Shader blockShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
 		blockShader.Use();
 		glBindVertexArray(VAO);
-		//glDrawArrays(GL_TRIANGLES, 0, 4);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
@@ -205,12 +209,12 @@ int main()
 	double coordY = 0;
 
 	// Set up vertices to draw background vertical columns for tiles to fall
-	GLdouble backColumnVertices[240]; // Format: 10 columns times four sets of three position and three color
+	GLdouble backColumnVertices[GRID_WIDTH * 4 * 6]; // Format: # of columns times four sets of three position and three color
 	// Set up indices to draw back as rectangles
-	GLuint backColumnsIndices[60]; //012,123,456,567, etc...
+	GLuint backColumnsIndices[GRID_WIDTH * 3 * 2]; //012,123,456,567, etc...
 
 	//Cycle thru columns to fill backColumnVertices
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < GRID_WIDTH; i++)
 	{
 		//Cycle thru vertices
 		for (int j = 0; j < 4; j++)
@@ -219,19 +223,19 @@ int main()
 			switch (j)
 			{
 			case 0:
-				pixelX = WIDTH - TILE_WIDTH*(10 - i);
+				pixelX = WIDTH - TILE_WIDTH*(GRID_WIDTH - i);
 				pixelY = 0;
 				break;
 			case 1:
-				pixelX = WIDTH - TILE_WIDTH*(9 - i);
+				pixelX = WIDTH - TILE_WIDTH*(GRID_WIDTH - 1 - i);
 				pixelY = 0;
 				break;
 			case 2:
-				pixelX = WIDTH - TILE_WIDTH*(10 - i);
+				pixelX = WIDTH - TILE_WIDTH*(GRID_WIDTH - i);
 				pixelY = HEIGHT;
 				break;
 			case 3:
-				pixelX = WIDTH - TILE_WIDTH*(9 - i);
+				pixelX = WIDTH - TILE_WIDTH*(GRID_WIDTH - 1 - i);
 				pixelY = HEIGHT;
 				break;
 			default:
@@ -257,11 +261,7 @@ int main()
 			}
 			
 		}
-	}
-
-	// Fill backColumnIndices
-	for (int i = 0; i < 10; i++)
-	{
+		// Fill backColumnIndices
 		backColumnsIndices[6 * i] = 4 * i;
 		backColumnsIndices[6 * i + 1] = 4 * i + 1;
 		backColumnsIndices[6 * i + 2] = 4 * i + 2;
@@ -269,27 +269,18 @@ int main()
 		backColumnsIndices[6 * i + 4] = 4 * i + 2;
 		backColumnsIndices[6 * i + 5] = 4 * i + 3;
 	}
-
-	// Set up vertex data (and buffer(s)) and attribute pointers
-	GLfloat vertices[] = {
-		// Positions          // Colors           // Texture Coords
-		0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top Right
-		0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom Right
-		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom Left
-		-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Top Left 
-	};
 	
-	GLuint VBO, VAO, EBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+	GLuint backVBO, backVAO, backEBO;
+	glGenVertexArrays(1, &backVAO);
+	glGenBuffers(1, &backVBO);
+	glGenBuffers(1, &backEBO);
 	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(VAO);
+	glBindVertexArray(backVAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, backVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(backColumnVertices), backColumnVertices, GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, backEBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(backColumnsIndices), backColumnsIndices, GL_STATIC_DRAW);
 
 	// Position attribute
@@ -330,8 +321,8 @@ int main()
 	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
 
 	GLuint transformLoc = glGetUniformLocation(backColumnsShader.Program, "transform");
-	
-	Block* testBlock = new Block(0, 0, 1);
+
+	clearGrid();
 
 	// Game loop
 	//GLfloat timeValue, greenValue;
@@ -366,12 +357,15 @@ int main()
 		// Draw container
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-		glBindVertexArray(VAO);
+		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 		
 		//std::cout << testBlock->vertices[0] << " " << testBlock->vertices[1] << " " << testBlock->vertices[2] << std::endl;
-		testBlock->render();
+		//testBlock->render();
+
+		updateGridBlocks();
+		renderBlocks();
 
 		/*glBindVertexArray(testBlock->VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(testBlock->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
@@ -382,9 +376,10 @@ int main()
 		glfwSwapBuffers(window);
 	}
 	// Properly de-allocate all resources once they've outlived their purpose
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	delete testBlock;
+	glDeleteVertexArrays(1, &backVAO);
+	glDeleteBuffers(1, &backVBO);
+	clearGrid();
+	
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
@@ -394,6 +389,7 @@ int main()
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
 
@@ -417,6 +413,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
+		for (int i = 0; i < 7; i++)
+		{
+			grid[i][i] = i + 1;
+			grid[i + 1][i] = i + 1;
+		}
 	}
 }
 
@@ -426,7 +427,46 @@ void clearGrid() {
 		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
 			grid[i][j] = 0;
-			delete gridBlock[i][j];
+			if (gridBlock[i][j] != NULL)
+			{
+				delete gridBlock[i][j];
+			}
+		}
+	}
+}
+void renderBlocks() {
+	for (int i = 0; i < GRID_WIDTH; i++)
+	{
+		for (int j = 0; j < GRID_HEIGHT; j++)
+		{
+			if (gridBlock[i][j] != NULL)
+			{
+				gridBlock[i][j]->render();
+			}
+		}
+	}
+}
+
+void updateGridBlocks() {
+	for (int i = 0; i < GRID_WIDTH; i++)
+	{
+		for (int j = 0; j < GRID_HEIGHT; j++)
+		{
+			if (gridBlock[i][j] != NULL && gridBlock[i][j]->colorValue == grid[i][j])
+			{
+				continue;
+			}
+			if (gridBlock[i][j] != NULL && gridBlock[i][j]->colorValue != grid[i][j])
+			{
+				delete gridBlock[i][j];
+				gridBlock[i][j] = new Block(i, j, grid[i][j]);
+				continue;
+			}
+			if (gridBlock[i][j] == NULL && grid[i][j] != 0)
+			{
+				gridBlock[i][j] = new Block(i, j, grid[i][j]);
+				continue;
+			}
 		}
 	}
 }
