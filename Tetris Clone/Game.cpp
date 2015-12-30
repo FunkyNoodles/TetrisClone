@@ -1,6 +1,8 @@
 // System
 #include <iostream>
 #include <math.h>
+#include <stdlib.h>
+#include <time.h>
 // GLEW
 #define GLEW_STATIC
 #include <glew.h>
@@ -18,13 +20,18 @@
 
 // Other includes
 #include "Shader.h"
+#include "Coord.h"
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-
 void clearGrid();
 void renderBlocks();
 void updateGridBlocks();
+void updateGrid();
+bool checkLineFull(int row);
+void clearRow(int row);
+void spawnBlock(int colorValue);
+bool isSettled();
 
 // Windows
 const int WIDTH = 800, HEIGHT = 600;
@@ -36,8 +43,8 @@ GLFWvidmode* desktopMode;
 // Game Variables
 bool fullscreen = false;
 
-const short GRID_WIDTH = 10;
-const short GRID_HEIGHT = 20;
+const int GRID_WIDTH = 10;
+const int GRID_HEIGHT = 20;
 const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermined by window pixel height
 /*
  * 0 - nothing
@@ -49,16 +56,20 @@ const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermin
  * 6 - occupied by T
  * 7 - occupied by Z
  */
-short grid[GRID_WIDTH][GRID_HEIGHT];
+static int grid[GRID_WIDTH][GRID_HEIGHT];
 
 struct Block{
 	GLdouble vertices[24]; // 3 pos 3 color
 	GLuint indices[6];
 	GLuint VAO, VBO, EBO;
 	int colorValue;
+	int column;
+	int row;
 	
 	Block(int column, int row, int value) {
 		colorValue = value;
+		this->column = column;
+		this->row = row;
 		// Lower left corner pos
 		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
 		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
@@ -167,7 +178,44 @@ struct Block{
 	}
 };
 
-Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
+static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
+
+struct Controller {
+	// The first element holds the center piece
+	Coord coords[4];
+	// Color value implies the shape
+	int colorValue;
+	Controller() {};
+	Controller(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
+		coords[0] = Coord(c0, r0);
+		coords[1] = Coord(c1, r1);
+		coords[2] = Coord(c2, r2);
+		coords[3] = Coord(c3, r3);
+		this->colorValue = colorValue;
+	}
+	void setController(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
+		coords[0].setColumn(c0);
+		coords[0].setRow(r0);
+		coords[1].setColumn(c1);
+		coords[1].setRow(r1);
+		coords[2].setColumn(c2);
+		coords[2].setRow(r2);
+		coords[3].setColumn(c3);
+		coords[3].setRow(r3);
+		this->colorValue = colorValue;
+	}
+	void moveDown() {
+		if (!isSettled())
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				coords[i].setRow(coords[i].getRow() - 1);
+			}
+		}
+	}
+};
+
+static Controller controller = Controller();
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -357,6 +405,7 @@ int main()
 		// Draw container
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+		// Draw back columns
 		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
@@ -366,6 +415,8 @@ int main()
 
 		updateGridBlocks();
 		renderBlocks();
+
+		//std::cout << spawnBlock() << std::endl;
 
 		/*glBindVertexArray(testBlock->VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(testBlock->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
@@ -379,7 +430,6 @@ int main()
 	glDeleteVertexArrays(1, &backVAO);
 	glDeleteBuffers(1, &backVBO);
 	clearGrid();
-	
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
@@ -427,7 +477,7 @@ void clearGrid() {
 		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
 			grid[i][j] = 0;
-			if (gridBlock[i][j] != NULL)
+			if (gridBlock[i][j] != nullptr)
 			{
 				delete gridBlock[i][j];
 			}
@@ -439,7 +489,7 @@ void renderBlocks() {
 	{
 		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
-			if (gridBlock[i][j] != NULL)
+			if (gridBlock[i][j] != nullptr)
 			{
 				gridBlock[i][j]->render();
 			}
@@ -452,21 +502,84 @@ void updateGridBlocks() {
 	{
 		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
-			if (gridBlock[i][j] != NULL && gridBlock[i][j]->colorValue == grid[i][j])
+			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->colorValue == grid[i][j])
 			{
 				continue;
 			}
-			if (gridBlock[i][j] != NULL && gridBlock[i][j]->colorValue != grid[i][j])
+			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->colorValue != grid[i][j])
 			{
 				delete gridBlock[i][j];
 				gridBlock[i][j] = new Block(i, j, grid[i][j]);
 				continue;
 			}
-			if (gridBlock[i][j] == NULL && grid[i][j] != 0)
+			if (gridBlock[i][j] == nullptr && grid[i][j] != 0)
 			{
 				gridBlock[i][j] = new Block(i, j, grid[i][j]);
 				continue;
 			}
 		}
 	}
+}
+
+void updateGrid() {
+
+}
+
+bool checkLineFull(int row) {
+	for (int i = 0; i < GRID_WIDTH; i++)
+	{
+		if (grid[i][row] == 0)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+void clearRow(int row) {
+	for (int i = row; i < GRID_HEIGHT; i++)
+	{
+
+	}
+}
+
+void spawnBlock(int colorValue, int rotation) {
+	/*srand(glfwGetTime()*100);
+	return rand() % 7 + 1;*/
+	// rotation may have 4 values max, 0, 1, 2, 3, depends on the shape
+	// I(1) has 2
+	// J(2) has 4
+	// L(3) has 4
+	// O(4) has none
+	// S(5) has 2
+	// T(6) has 4
+	// Z(7) has 2
+	switch (colorValue)
+	{
+	default:
+		break;
+	case 1:
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Vertical I
+			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT + 2, GRID_WIDTH / 2, GRID_HEIGHT + 3, GRID_WIDTH / 2, GRID_HEIGHT + 1, GRID_WIDTH / 2, GRID_HEIGHT, colorValue);
+		case 1:
+			// Horizontal I
+			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT, GRID_WIDTH / 2 - 1, GRID_HEIGHT, GRID_WIDTH / 2 + 1, GRID_HEIGHT, GRID_WIDTH / 2 + 2, GRID_HEIGHT, colorValue);
+		}
+		break;
+	}
+}
+
+bool isSettled() {
+	for (int i = 0; i < 4; i++)
+	{
+		if (grid[controller.coords[i].getColumn()][controller.coords[i].getRow() - 1] != 0) {
+			return true;
+		}
+	}
+	return false;
 }
