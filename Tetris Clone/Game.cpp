@@ -30,7 +30,7 @@ void updateGridBlocks();
 void updateGrid();
 bool checkLineFull(int row);
 void clearRow(int row);
-void spawnBlock(int colorValue);
+void spawnBlock(int colorValue, int rotation);
 bool isSettled();
 
 // Windows
@@ -66,10 +66,23 @@ struct Block{
 	int column;
 	int row;
 	
-	Block(int column, int row, int value) {
-		colorValue = value;
+	Block(int column, int row, int colorValue) {
+		this->colorValue = colorValue;
 		this->column = column;
 		this->row = row;
+		
+		setVertices();
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+		indices[3] = 1;
+		indices[4] = 2;
+		indices[5] = 3;
+
+		setVAO();
+	}
+
+	void setVertices() {
 		// Lower left corner pos
 		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
 		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
@@ -89,7 +102,7 @@ struct Block{
 		// Color is the same so a loop will do
 		for (int i = 0; i < 4; i++)
 		{
-			switch (value)
+			switch (colorValue)
 			{
 			case 1:
 				// Cyan
@@ -137,13 +150,9 @@ struct Block{
 				break;
 			}
 		}
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-		indices[3] = 1;
-		indices[4] = 2;
-		indices[5] = 3;
+	}
 
+	void setVAO() {
 		glGenVertexArrays(1, &VAO);
 		glGenBuffers(1, &VBO);
 		glGenBuffers(1, &EBO);
@@ -183,9 +192,12 @@ static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 struct Controller {
 	// The first element holds the center piece
 	Coord coords[4];
+	Block* blocks[4];
 	// Color value implies the shape
 	int colorValue;
+
 	Controller() {};
+
 	Controller(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
 		coords[0] = Coord(c0, r0);
 		coords[1] = Coord(c1, r1);
@@ -193,6 +205,7 @@ struct Controller {
 		coords[3] = Coord(c3, r3);
 		this->colorValue = colorValue;
 	}
+
 	void setController(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
 		coords[0].setColumn(c0);
 		coords[0].setRow(r0);
@@ -203,13 +216,45 @@ struct Controller {
 		coords[3].setColumn(c3);
 		coords[3].setRow(r3);
 		this->colorValue = colorValue;
+		// Set blocks to render
+		for (int i = 0; i < 4; i++)
+		{
+			if (blocks[i] != nullptr)
+			{
+				delete blocks[i];
+			}
+			blocks[i] = new Block(coords[i].getColumn(), coords[i].getRow(), colorValue);
+		}
 	}
+
 	void moveDown() {
 		if (!isSettled())
 		{
 			for (int i = 0; i < 4; i++)
 			{
 				coords[i].setRow(coords[i].getRow() - 1);
+			}
+		}
+		updateBlocks();
+	}
+
+	void updateBlocks() {
+		for (int i = 0; i < 4; i++)
+		{
+			blocks[i]->colorValue = colorValue;
+			blocks[i]->column = coords[i].getColumn();
+			blocks[i]->row = coords[i].getRow();
+			blocks[i]->setVertices();
+			blocks[i]->setVAO();
+		}
+	}
+
+	~Controller() {
+		for (int i = 0; i < 4; i++)
+		{
+			if (blocks[i] != nullptr)
+			{
+				delete blocks[i];
 			}
 		}
 	}
@@ -340,40 +385,14 @@ int main()
 
 	glBindVertexArray(0); // Unbind VAO
 
-
-	// Texture 
-	//int width, height;
-	//unsigned char* image = SOIL_load_image("res/container.jpg", &width, &height, 0, SOIL_LOAD_RGB);
-
-	////Texture 1
-	//GLuint texture1;
-	//glGenTextures(1, &texture1);
-	//glBindTexture(GL_TEXTURE_2D, texture1);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
-	//glGenerateMipmap(GL_TEXTURE_2D);
-	//SOIL_free_image_data(image);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-
-	////Texture 2
-	//GLuint texture2;
-	//image = SOIL_load_image("res/awesomeface.png", &width, &height, 0, SOIL_LOAD_RGB);
-	//glGenTextures(1, &texture2);
-	//glBindTexture(GL_TEXTURE_2D, texture2);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
-	//glGenerateMipmap(GL_TEXTURE_2D);
-	//SOIL_free_image_data(image);
-	//glBindTexture(GL_TEXTURE_2D, 0);
-	
-	
-	//trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
-	//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
-
 	GLuint transformLoc = glGetUniformLocation(backColumnsShader.Program, "transform");
 
 	clearGrid();
 
+	spawnBlock(1, 0);
+	//controller.moveDown();
+	
 	// Game loop
-	//GLfloat timeValue, greenValue;
 	while (!glfwWindowShouldClose(window))
 	{
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
@@ -384,15 +403,6 @@ int main()
 		glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		
-		//glUniform4f(vertextColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-	/*	glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		glUniform1i(glGetUniformLocation(shader.Program, "ourTexture1"), 0);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
-		glUniform1i(glGetUniformLocation(shader.Program, "ourTexture2"), 1);*/
-
 		// Activate shader
 		backColumnsShader.Use();
 
@@ -402,26 +412,16 @@ int main()
 		//trans = glm::rotate(trans, (GLfloat)glfwGetTime()*5.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 		//glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
-		// Draw container
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 		// Draw back columns
 		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		
-		//std::cout << testBlock->vertices[0] << " " << testBlock->vertices[1] << " " << testBlock->vertices[2] << std::endl;
-		//testBlock->render();
 
 		updateGridBlocks();
 		renderBlocks();
+		//controller.moveDown();
 
-		//std::cout << spawnBlock() << std::endl;
-
-		/*glBindVertexArray(testBlock->VAO);
-		glDrawElements(GL_TRIANGLES, sizeof(testBlock->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);*/
-		//std::cout << testBlock->vertices[10] << std::endl;
+		std::cout << controller.coords[0].getColumn() << "  " <<  controller.coords[0].getRow() << std::endl;
 		
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
@@ -463,11 +463,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
+		// Test key
 		for (int i = 0; i < 7; i++)
 		{
 			grid[i][i] = i + 1;
 			grid[i + 1][i] = i + 1;
 		}
+		controller.moveDown();
 	}
 }
 
@@ -485,6 +487,7 @@ void clearGrid() {
 	}
 }
 void renderBlocks() {
+	// Render blocks in array
 	for (int i = 0; i < GRID_WIDTH; i++)
 	{
 		for (int j = 0; j < GRID_HEIGHT; j++)
@@ -493,6 +496,15 @@ void renderBlocks() {
 			{
 				gridBlock[i][j]->render();
 			}
+		}
+	}
+	// Render controller blocks
+	for (int i = 0; i < 4; i++)
+	{
+		if (controller.coords[i].getRow() < GRID_HEIGHT	&& controller.coords[i].getRow() >= 0 && controller.coords[i].getColumn() < GRID_WIDTH && controller.coords[i].getColumn() >= 0)
+		{
+			// if the block is in the screen
+			controller.blocks[i]->render();
 		}
 	}
 }
@@ -566,9 +578,11 @@ void spawnBlock(int colorValue, int rotation) {
 		case 0:
 			// Vertical I
 			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT + 2, GRID_WIDTH / 2, GRID_HEIGHT + 3, GRID_WIDTH / 2, GRID_HEIGHT + 1, GRID_WIDTH / 2, GRID_HEIGHT, colorValue);
+			break;
 		case 1:
 			// Horizontal I
 			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT, GRID_WIDTH / 2 - 1, GRID_HEIGHT, GRID_WIDTH / 2 + 1, GRID_HEIGHT, GRID_WIDTH / 2 + 2, GRID_HEIGHT, colorValue);
+			break;
 		}
 		break;
 	}
@@ -578,6 +592,10 @@ bool isSettled() {
 	for (int i = 0; i < 4; i++)
 	{
 		if (grid[controller.coords[i].getColumn()][controller.coords[i].getRow() - 1] != 0) {
+			return true;
+		}
+		if (controller.coords[i].getRow() == 0)
+		{
 			return true;
 		}
 	}
