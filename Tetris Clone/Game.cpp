@@ -18,7 +18,7 @@
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 
-// Other includes
+// Other includes 
 #include "Shader.h"
 #include "Coord.h"
 
@@ -28,10 +28,12 @@ void clearGrid();
 void renderBlocks();
 void updateGridBlocks();
 void updateGrid();
+bool appendToGrid();
 bool checkLineFull(int row);
 void clearRow(int row);
 void spawnBlock(int colorValue, int rotation);
-bool isSettled();
+int generateNextBlockColor();
+int generateNextBlockRotation();
 
 // Windows
 const int WIDTH = 800, HEIGHT = 600;
@@ -42,7 +44,7 @@ GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
-
+double dropSpeed = 0.7; // default drop speed
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermined by window pixel height
@@ -58,15 +60,11 @@ const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermin
  */
 static int grid[GRID_WIDTH][GRID_HEIGHT];
 
-struct Block{
-	GLdouble vertices[24]; // 3 pos 3 color
-	GLuint indices[6];
+class Block{
+public:
 	GLuint VAO, VBO, EBO;
-	int colorValue;
-	int column;
-	int row;
-	
-	Block(int column, int row, int colorValue) {
+	Shader blockShader = Shader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+	Block::Block(int column, int row, int colorValue) {
 		this->colorValue = colorValue;
 		this->column = column;
 		this->row = row;
@@ -78,11 +76,13 @@ struct Block{
 		indices[3] = 1;
 		indices[4] = 2;
 		indices[5] = 3;
-
+		glGenVertexArrays(1, &VAO);
+		glGenBuffers(1, &VBO);
+		glGenBuffers(1, &EBO);
 		setVAO();
 	}
 
-	void setVertices() {
+	void Block::setVertices() {
 		// Lower left corner pos
 		vertices[0] = (WIDTH - ((double)(GRID_WIDTH - column)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
 		vertices[1] = (HEIGHT - ((double)(GRID_HEIGHT - row)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
@@ -152,17 +152,14 @@ struct Block{
 		}
 	}
 
-	void setVAO() {
-		glGenVertexArrays(1, &VAO);
-		glGenBuffers(1, &VBO);
-		glGenBuffers(1, &EBO);
+	void Block::setVAO() {
 
 		glBindVertexArray(VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
 
 		// Position attribute
 		glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 6 * sizeof(GLdouble), (GLvoid*)0);
@@ -173,32 +170,61 @@ struct Block{
 		glBindVertexArray(0);
 	}
 
-	void render() {
-		Shader blockShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+	void Block::render() {
+		
 		blockShader.Use();
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
-	~Block() {
+	int Block::getColorValue() {
+		return colorValue;
+	}
+
+	int Block::getColumn() {
+		return column;
+	}
+
+	int Block::getRow() {
+		return row;
+	}
+
+	void Block::setColorValue(int colorValue) {
+		this->colorValue = colorValue;
+	}
+
+	void Block::setColumn(int column) {
+		this->column = column;
+	}
+
+	void Block::setRow(int row) {
+		this->row = row;
+	}
+
+	Block::~Block() {
 		glDeleteVertexArrays(1, &VAO);
 		glDeleteBuffers(1, &VBO);
 	}
+private:
+	GLdouble vertices[24]; // 3 pos 3 color
+	GLuint indices[6];
+	int colorValue;
+	int column;
+	int row;
 };
 
 static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 
-struct Controller {
+class Controller {
+public:
 	// The first element holds the center piece
 	Coord coords[4];
 	Block* blocks[4];
-	// Color value implies the shape
-	int colorValue;
 
-	Controller() {};
+	Controller::Controller() {};
 
-	Controller(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
+	Controller::Controller(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
 		coords[0] = Coord(c0, r0);
 		coords[1] = Coord(c1, r1);
 		coords[2] = Coord(c2, r2);
@@ -206,7 +232,7 @@ struct Controller {
 		this->colorValue = colorValue;
 	}
 
-	void setController(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
+	void Controller::setController(int c0, int r0, int c1, int r1, int c2, int r2, int c3, int r3, int colorValue) {
 		coords[0].setColumn(c0);
 		coords[0].setRow(r0);
 		coords[1].setColumn(c1);
@@ -227,7 +253,7 @@ struct Controller {
 		}
 	}
 
-	void moveDown() {
+	void Controller::moveDown() {
 		if (!isSettled())
 		{
 			for (int i = 0; i < 4; i++)
@@ -238,18 +264,78 @@ struct Controller {
 		updateBlocks();
 	}
 
-	void updateBlocks() {
+	void Controller::moveLeft() {
+		if (canMoveLeft())
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				coords[i].setColumn(coords[i].getColumn() - 1);
+			}
+		}
+		updateBlocks();
+	}
+
+	void Controller::moveRight() {
+		if (canMoveRight())
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				coords[i].setColumn(coords[i].getColumn() + 1);
+			}
+		}
+		updateBlocks();
+	}
+
+	void Controller::updateBlocks() {
 		for (int i = 0; i < 4; i++)
 		{
-			blocks[i]->colorValue = colorValue;
-			blocks[i]->column = coords[i].getColumn();
-			blocks[i]->row = coords[i].getRow();
+			blocks[i]->setColorValue(colorValue);
+			blocks[i]->setColumn(coords[i].getColumn());
+			blocks[i]->setRow(coords[i].getRow());
 			blocks[i]->setVertices();
 			blocks[i]->setVAO();
 		}
 	}
 
-	~Controller() {
+	bool Controller::isSettled() {
+		for (int i = 0; i < 4; i++)
+		{
+			if (coords[i].getRow() == 0 || grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool Controller::canMoveLeft() {
+		for (int i = 0; i < 4; i++)
+		{
+			if (coords[i].getColumn() == 0 || grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Controller::canMoveRight() {
+		for (int i = 0; i < 4; i++)
+		{
+			if (coords[i].getColumn() == GRID_WIDTH - 1 || grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	int Controller::getColorValue() {
+		return colorValue;
+	}
+
+	void Controller::setColorValue(int colorValue) {
+		this->colorValue = colorValue;
+	}
+
+	Controller::~Controller() {
 		for (int i = 0; i < 4; i++)
 		{
 			if (blocks[i] != nullptr)
@@ -258,6 +344,9 @@ struct Controller {
 			}
 		}
 	}
+private:
+	// Color value implies the shape
+	int colorValue;
 };
 
 static Controller controller = Controller();
@@ -389,14 +478,21 @@ int main()
 
 	clearGrid();
 
-	spawnBlock(1, 0);
-	//controller.moveDown();
+	spawnBlock(7, 2);
+
+	double startTime = glfwGetTime(); // time when game starts
+	double previousTime = startTime; // Time when previous update
+	double currentTime;
 	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
+
+		
+		
+
 
 		// Render
 		// Clear the colorbuffer
@@ -417,11 +513,33 @@ int main()
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		updateGridBlocks();
+		
+
+		currentTime = glfwGetTime() - startTime;
+		if (currentTime - previousTime > dropSpeed)
+		{
+			// Update controller
+			if (controller.isSettled())
+			{
+				if (!appendToGrid())
+				{
+					//clearGrid();
+				}
+				//std::cout << appendToGrid() << std::endl;
+				spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+			}
+			else {
+				controller.moveDown();
+
+			}
+			previousTime += dropSpeed;
+			updateGridBlocks();
+			
+		}
 		renderBlocks();
 		//controller.moveDown();
 
-		std::cout << controller.coords[0].getColumn() << "  " <<  controller.coords[0].getRow() << std::endl;
+		//std::cout << controller.coords[0].getColumn() << "  " <<  controller.coords[0].getRow() << std::endl;
 		
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
@@ -442,7 +560,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
-
 	/*if (key == GLFW_KEY_F11 && action == GLFW_RELEASE)
 	{
 		//glfwGetVideoMode(&monitor);
@@ -460,7 +577,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		window = glfwCreateWindow(desktopMode->width, desktopMode->height, "Damn", monitor, nullptr);
 		glfwMakeContextCurrent(window);
 	}*/
-
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
 		// Test key
@@ -469,7 +585,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			grid[i][i] = i + 1;
 			grid[i + 1][i] = i + 1;
 		}
+		//spawnBlock(2, 1);
+	}
+	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+	{
 		controller.moveDown();
+	}
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+	{
+		controller.moveLeft();
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+	{
+		controller.moveRight();
 	}
 }
 
@@ -486,6 +614,7 @@ void clearGrid() {
 		}
 	}
 }
+
 void renderBlocks() {
 	// Render blocks in array
 	for (int i = 0; i < GRID_WIDTH; i++)
@@ -514,11 +643,11 @@ void updateGridBlocks() {
 	{
 		for (int j = 0; j < GRID_HEIGHT; j++)
 		{
-			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->colorValue == grid[i][j])
+			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->getColorValue() == grid[i][j])
 			{
 				continue;
 			}
-			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->colorValue != grid[i][j])
+			if (gridBlock[i][j] != nullptr && gridBlock[i][j]->getColorValue() != grid[i][j])
 			{
 				delete gridBlock[i][j];
 				gridBlock[i][j] = new Block(i, j, grid[i][j]);
@@ -535,6 +664,23 @@ void updateGridBlocks() {
 
 void updateGrid() {
 
+}
+
+bool appendToGrid() {
+	for (int i = 0; i < 4; i++)
+	{
+		// Check if out of bound, if so game over
+		if (controller.coords[i].getColumn() >= GRID_WIDTH || controller.coords[i].getColumn() < 0 || controller.coords[i].getRow() >= GRID_HEIGHT || controller.coords[i].getRow() < 0)
+		{
+			return false;
+		}
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		// Append coords from controller
+		grid[controller.coords[i].getColumn()][controller.coords[i].getRow()] = controller.getColorValue();
+	}
+	return true;
 }
 
 bool checkLineFull(int row) {
@@ -556,8 +702,8 @@ void clearRow(int row) {
 }
 
 void spawnBlock(int colorValue, int rotation) {
-	/*srand(glfwGetTime()*100);
-	return rand() % 7 + 1;*/
+	rotation %= 4;
+	int halfGridWidth = GRID_WIDTH / 2;
 	// rotation may have 4 values max, 0, 1, 2, 3, depends on the shape
 	// I(1) has 2
 	// J(2) has 4
@@ -571,33 +717,134 @@ void spawnBlock(int colorValue, int rotation) {
 	default:
 		break;
 	case 1:
+		rotation %= 2;
 		switch (rotation)
 		{
 		default:
 			break;
 		case 0:
 			// Vertical I
-			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT + 2, GRID_WIDTH / 2, GRID_HEIGHT + 3, GRID_WIDTH / 2, GRID_HEIGHT + 1, GRID_WIDTH / 2, GRID_HEIGHT, colorValue);
+			controller.setController(halfGridWidth, GRID_HEIGHT + 2, halfGridWidth, GRID_HEIGHT + 3, halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, colorValue);
 			break;
 		case 1:
 			// Horizontal I
-			controller.setController(GRID_WIDTH / 2, GRID_HEIGHT, GRID_WIDTH / 2 - 1, GRID_HEIGHT, GRID_WIDTH / 2 + 1, GRID_HEIGHT, GRID_WIDTH / 2 + 2, GRID_HEIGHT, colorValue);
+			controller.setController(halfGridWidth, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT, halfGridWidth + 2, GRID_HEIGHT, colorValue);
+			break;
+		}
+		break;
+	case 2:
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Generic J
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT, colorValue);
+			break;
+		case 1:
+			// J rotated clockwise 90 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT + 1, colorValue);
+			break;
+		case 2:
+			// J rotated 180 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth + 1, GRID_HEIGHT + 2, colorValue);
+			break;
+		case 3:
+			// J rotated counter-clockwise 90 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT, colorValue);
+			break;
+		}
+		break;
+	case 3:
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Generic L
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT, colorValue);
+			break;
+		case 1:
+			// L rotated clockwise 90 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT, colorValue);
+			break;
+		case 2:
+			// L rotated 180 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth - 1, GRID_HEIGHT + 2, colorValue);
+			break;
+		case 3:
+			// L rotated counter-clockwise 90 degrees
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT + 2, colorValue);
+		}
+		break;
+	case 4:
+		// Generic O
+		controller.setController(halfGridWidth, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT + 1, colorValue);
+		break;
+	case 5:
+		rotation %= 2;
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Vertical S
+			controller.setController(halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 2, halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, colorValue);
+			break;
+		case 1:
+			// Flattened S
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth + 1, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, halfGridWidth - 1, GRID_HEIGHT, colorValue);
+		}
+		break;
+	case 6:
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Generic T
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT + 1, colorValue);
+			break;
+		case 1:
+			// T pointing to left
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, colorValue);
+			break;
+		case 2:
+			// Upside down T
+			controller.setController(halfGridWidth, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT, halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT, colorValue);
+			break;
+		case 3:
+			// T pointing to right
+			controller.setController(halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT, halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 2, colorValue);
+		}
+		break;
+	case 7:
+		rotation %= 2;
+		switch (rotation)
+		{
+		default:
+			break;
+		case 0:
+			// Vertical Z
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT + 2, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT, colorValue);
+			break;
+		case 1:
+			// Flattened Z
+			controller.setController(halfGridWidth, GRID_HEIGHT + 1, halfGridWidth - 1, GRID_HEIGHT + 1, halfGridWidth, GRID_HEIGHT, halfGridWidth + 1, GRID_HEIGHT, colorValue);
 			break;
 		}
 		break;
 	}
 }
 
-bool isSettled() {
-	for (int i = 0; i < 4; i++)
-	{
-		if (grid[controller.coords[i].getColumn()][controller.coords[i].getRow() - 1] != 0) {
-			return true;
-		}
-		if (controller.coords[i].getRow() == 0)
-		{
-			return true;
-		}
-	}
-	return false;
+int generateNextBlockColor() {
+	srand(glfwGetTime()*10000000);
+	// one of 1 to 7
+	return rand() % 7 + 1;
+}
+
+int generateNextBlockRotation() {
+	srand(glfwGetTime() * 10000000);
+	// one of 0 to 3
+	return rand() % 4;
 }

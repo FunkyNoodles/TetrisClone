@@ -22,4 +22,3 @@ public:
 private:
 	int column, row;
 };
-
