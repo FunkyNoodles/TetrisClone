@@ -31,6 +31,9 @@ bool appendToGrid();
 bool checkRowFull(int row);
 void removeRow(int row);
 void spawnBlock(int colorValue, int rotation);
+void fallBlocks();
+int findNextFilledLine(int row);
+void fillEmptySpots(int row);
 int generateNextBlockColor();
 int generateNextBlockRotation();
 
@@ -171,7 +174,6 @@ public:
 	}
 
 	void Block::render() {
-		
 		blockShader.Use();
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
@@ -496,12 +498,13 @@ int main()
 
 	glBindVertexArray(0); // Unbind VAO
 
-
-	std::vector<int> rowsToCheck; // Rows to check for completeness after block is set down
+	// Rows to check for completeness after block is set down
+	std::vector<int> rowsToCheck;
 
 	clearGrid();
 
-	spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+	//spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+	spawnBlock(4, 1);
 
 	double startTime = glfwGetTime(); // time when game starts
 	double previousTime = startTime; // Time when previous update happened
@@ -554,11 +557,12 @@ int main()
 				for (int i = 0; i < 4; i++)
 				{
 					bool isRowCheckRepeat = false;
-					for (std::vector<int>::iterator it = rowsToCheck.begin(); it != rowsToCheck.end(); it++)
+					for (int j = 0; j < (int)(rowsToCheck.size()); j++)
 					{
-						if (*it == controller.coords[i].getRow())
+						if (rowsToCheck[j] == controller.coords[i].getRow())
 						{
 							isRowCheckRepeat = true;
+							break;
 						}
 					}
 					if (!isRowCheckRepeat)
@@ -572,13 +576,14 @@ int main()
 				// Remove rows if needed
 				if (!rowsToCheck.empty())
 				{
-					for (std::vector<int>::iterator it = rowsToCheck.end(); it != rowsToCheck.begin(); it--)
+					for (int i = rowsToCheck.size() - 1; i >= 0; i--)
 					{
-						if (checkRowFull(*it))
+						if (checkRowFull(rowsToCheck[i]))
 						{
-							removeRow(*it);
+							removeRow(rowsToCheck[i]);
 						}
 					}
+					fallBlocks();
 					updateGridBlocks();
 				}
 
@@ -588,12 +593,9 @@ int main()
 				}
 				else
 				{
-					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
-					std::cout << controller.isSettled() << std::endl;
+					//spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+					spawnBlock(4, 1);
 				}
-				//std::cout << appendToGrid() << std::endl;
-				//spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
-				
 			}
 			else {
 				controller.moveDown();
@@ -603,10 +605,6 @@ int main()
 		}
 		renderBlocks();
 
-		//controller.moveDown();
-
-		//std::cout << controller.coords[0].getColumn() << "  " <<  controller.coords[0].getRow() << std::endl;
-		
 		// Swap the screen buffers
 		glfwSwapBuffers(window);
 	}
@@ -614,6 +612,7 @@ int main()
 	glDeleteVertexArrays(1, &backVAO);
 	glDeleteBuffers(1, &backVBO);
 	clearGrid();
+
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
@@ -622,6 +621,7 @@ int main()
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
+	// ESC key
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		
 		glfwSetWindowShouldClose(window, GL_TRUE);
@@ -643,16 +643,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		window = glfwCreateWindow(desktopMode->width, desktopMode->height, "Damn", monitor, nullptr);
 		glfwMakeContextCurrent(window);
 	}*/
+	// Test key
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
-		// Test key
-		for (int i = 0; i < 7; i++)
+		for (int i = 2; i < GRID_WIDTH; i++)
 		{
-			grid[i][i] = i + 1;
-			grid[i + 1][i] = i + 1;
+			grid[i][0] = 4;
 		}
-		//spawnBlock(2, 1);
 	}
+	// Move block down
 	if (key == GLFW_KEY_DOWN && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveDown();
@@ -661,6 +660,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			return;
 		}
 	}
+	// Move block left
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveLeft();
@@ -669,6 +669,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			return;
 		}
 	}
+	// Move block right
 	if (key == GLFW_KEY_RIGHT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveRight();
@@ -732,11 +733,14 @@ void updateGridBlocks() {
 				{
 					delete gridBlock[i][j];
 					gridBlock[i][j] = nullptr;
-					gridBlock[i][j] = new Block(i, j, grid[i][j]);
+					if (grid[i][j] != 0)
+					{
+						gridBlock[i][j] = new Block(i, j, grid[i][j]);
+					}
 					continue;
 				}
 			}
-			if (gridBlock[i][j] == nullptr && grid[i][j] != 0)
+			if (gridBlock[i][j] == nullptr && grid[i][j] > 0)
 			{
 				gridBlock[i][j] = new Block(i, j, grid[i][j]);
 				continue;
@@ -773,13 +777,64 @@ bool checkRowFull(int row) {
 	return true;
 }
 
+// Remove a row
 void removeRow(int row) {
-	for (int i = row; i < GRID_WIDTH; i++)
+	for (int i = 0; i < GRID_WIDTH; i++)
 	{
 		grid[i][row] = -1;
 	}
 }
 
+// Make all the blocks "fall" after line removals, a.k.a. shifting array down to fill all -1
+void fallBlocks() {
+	for (int j = 0; j < GRID_HEIGHT; j++)
+	{
+		if (grid[0][j] == -1)
+		{
+			int rowToCopyDown = findNextFilledLine(j);
+			// If this is top most filled line
+			if (rowToCopyDown == -1)
+			{
+				fillEmptySpots(j);
+				return;
+			}
+			else
+			{
+				for (int i = 0; i < GRID_WIDTH; i++)
+				{
+					grid[i][j] = grid[i][rowToCopyDown]; // copy row from above
+					grid[i][rowToCopyDown] = -1; // set above row to be empty
+				}
+			}
+		}
+	}
+}
+
+// Find next filled line above
+int findNextFilledLine(int row) {
+	for (int i = row + 1; i < GRID_HEIGHT; i++)
+	{
+		if (grid[0][i] != -1)
+		{
+			return i;
+		}
+	}
+	return -1; // no lines above are filled
+}
+
+// Fill empty spots with 0 after line removal and falls
+void fillEmptySpots(int row) {
+	for (int i = 0; i < GRID_WIDTH; i++)
+	{
+		for (int j = row; j < GRID_HEIGHT; j++)
+		{
+			grid[i][j] = 0;
+		}
+	}
+}
+
+
+// Spawn a new block from the top and set controller to it
 void spawnBlock(int colorValue, int rotation) {
 	rotation %= 4;
 	int halfGridWidth = GRID_WIDTH / 2;
@@ -919,7 +974,7 @@ void spawnBlock(int colorValue, int rotation) {
 	}
 }
 
-
+// Random generators
 std::mt19937 rng;
 
 int generateNextBlockColor() {
