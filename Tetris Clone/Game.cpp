@@ -222,6 +222,8 @@ class Controller {
 public:
 	// The first element holds the center piece
 	Coord coords[4];
+	// Holds what coords will be after rotation
+	Coord rotationBuffer[4];
 	Block* blocks[4];
 
 	Controller::Controller() {};
@@ -231,6 +233,10 @@ public:
 		coords[1] = Coord(c1, r1);
 		coords[2] = Coord(c2, r2);
 		coords[3] = Coord(c3, r3);
+		rotationBuffer[0] = Coord(c0, r0);
+		rotationBuffer[1] = Coord(c1, r1);
+		rotationBuffer[2] = Coord(c2, r2);
+		rotationBuffer[3] = Coord(c3, r3);
 		this->colorValue = colorValue;
 	}
 
@@ -256,8 +262,9 @@ public:
 		}
 	}
 
-	void Controller::moveDown() {
-		if (!isSettled())
+	// Move a set of coords down
+	void Controller::moveDown(Coord coords[4]) {
+		if (!canMoveDown(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -267,8 +274,21 @@ public:
 		updateBlocks();
 	}
 
-	void Controller::moveLeft() {
-		if (canMoveLeft())
+	// Move a set of coords up
+	void Controller::moveUp(Coord corrds[4]) {
+		if (!canMoveUp(coords))
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				coords[i].setRow(coords[i].getRow() + 1);
+			}
+		}
+		updateBlocks();
+	}
+
+	// Move a set of coords left
+	void Controller::moveLeft(Coord coords[4]) {
+		if (canMoveLeft(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -278,8 +298,9 @@ public:
 		updateBlocks();
 	}
 
-	void Controller::moveRight() {
-		if (canMoveRight())
+	// Move a set of coords right
+	void Controller::moveRight(Coord coords[4]) {
+		if (canMoveRight(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -300,7 +321,8 @@ public:
 		}
 	}
 
-	bool Controller::isSettled() {
+	// Check if a set of coords can move down
+	bool Controller::canMoveDown(Coord coords[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			// Cehck if in range
@@ -314,7 +336,27 @@ public:
 		return false;
 	}
 
-	bool Controller::canMoveLeft() {
+	// Check if a set of coords can move up
+	bool Controller::canMoveUp(Coord coords[4]) {
+		for (int i = 0; i < 4; i++)
+		{
+			// Cehck if in range
+			if (coords[i].getRow() <= GRID_HEIGHT && coords[i].getRow() >= 0 && coords[i].getColumn() < GRID_WIDTH && coords[i].getColumn() >= 0)
+			{
+				if (coords[i].getRow() >= GRID_HEIGHT)
+				{
+					continue;
+				}
+				if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0) {
+					return false;
+				}
+			}
+		}
+		return false;
+	}
+
+	// Check if a set of coords can move left
+	bool Controller::canMoveLeft(Coord coords[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			if (coords[i].getColumn() <= 0)
@@ -332,7 +374,8 @@ public:
 		return true;
 	}
 
-	bool Controller::canMoveRight() {
+	// Check if a set of coords can move right
+	bool Controller::canMoveRight(Coord coords[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			if (coords[i].getColumn() >= GRID_WIDTH - 1)
@@ -348,6 +391,91 @@ public:
 			}
 		}
 		return true;
+	}
+
+	// Rotate the piece 90 degrees clockwise
+	void rotate() {
+		if (canRotate() && colorValue != 4)
+		{
+			// If allows rotation, copy from rotationBuffer
+			for (int i = 0; i < 4; i++)
+			{
+				coords[i].setColumn(rotationBuffer[i].getColumn());
+				coords[i].setRow(rotationBuffer[i].getRow());
+			}
+		}
+		updateBlocks();
+	}
+
+	// Check if the piece can rotate
+	bool canRotate() {
+		if (updateRotationBuffer())
+		{
+			// Cycle through translations
+			for (int i = 0; i < 4; i++)
+			{
+				if (rotationBuffer[i].getRow() < 0)
+				{
+					while (canMoveUp(rotationBuffer) && !canMoveDown(rotationBuffer))
+					{
+						moveUp(rotationBuffer);
+					}
+				}
+				if (rotationBuffer[i].getColumn() < 0)
+				{
+					while (canMoveRight(rotationBuffer) && !canMoveLeft(rotationBuffer))
+					{
+						moveRight(rotationBuffer);
+					}
+				}
+				if (rotationBuffer[i].getRow() >= GRID_HEIGHT)
+				{
+				}
+				if (rotationBuffer[i].getColumn() >= GRID_WIDTH)
+				{
+					while (canMoveLeft(rotationBuffer) && !canMoveRight(rotationBuffer))
+					{
+						moveLeft(rotationBuffer);
+					}
+				}
+			}
+
+			// Check again after translations
+			for (int i = 0; i < 4; i++)
+			{
+				if (rotationBuffer[i].getRow() < 0 || rotationBuffer[i].getColumn() < 0 || rotationBuffer[i].getColumn() >= GRID_WIDTH)
+				{
+					// Still out of bound
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	// Set rotation buffer and returns if new rotation buffer is out of bound
+	// Use rotation matrix to set a rotation buffer
+	// x -> -y
+	// y -> x
+	// a special case when the angle is 90 degrees about z-axis
+	bool updateRotationBuffer() {
+		// x and y with respect to center piece
+		int deltaX, deltaY;
+		bool isOutOfBound = false;
+		for (int i = 0; i < 4; i++)
+		{
+			deltaX = coords[i].getColumn() - coords[0].getColumn();
+			deltaY = coords[i].getRow() - coords[0].getRow();
+			rotationBuffer[i].setColumn(coords[0].getColumn() - deltaY);
+			rotationBuffer[i].setRow(coords[0].getRow() + deltaX);
+			
+			// Check if out of bound
+			if (rotationBuffer[i].getColumn() >= GRID_WIDTH || rotationBuffer[i].getColumn() < 0 || rotationBuffer[i].getRow() < 0)
+			{
+				isOutOfBound = true;
+			}
+		}
+		return isOutOfBound;
 	}
 
 	int Controller::getColorValue() {
@@ -503,23 +631,12 @@ int main()
 
 	clearGrid();
 
-	//spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
-	spawnBlock(4, 1);
+	spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 
 	double startTime = glfwGetTime(); // time when game starts
 	double previousTime = startTime; // Time when previous update happened
 	double currentTime;
 	bool isGameOver;
-
-	/*bool test = gridBlock[0][0] == nullptr;
-	std::cout << test << std::endl;
-	gridBlock[0][0] = new Block(1, 1, 1);
-	test = gridBlock[0][0] == nullptr;
-	std::cout << test << std::endl;
-	delete gridBlock[0][0];
-	gridBlock[0][0] = nullptr;
-	test = gridBlock[0][0] == nullptr;
-	std::cout << test << std::endl;*/
 	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
@@ -534,12 +651,6 @@ int main()
 
 		backColumnsShader.Use();
 
-		// Create transformation
-		//glm::mat4 trans;
-		//trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-		//trans = glm::rotate(trans, (GLfloat)glfwGetTime()*5.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		//glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-
 		// Draw back columns
 		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
@@ -549,8 +660,7 @@ int main()
 		if (currentTime - previousTime > dropSpeed)
 		{
 			// Update controller
-			//std::cout << controller.isSettled() << std::endl;
-			if (controller.isSettled())
+			if (controller.canMoveDown(controller.coords))
 			{
 				rowsToCheck.clear();
 				// Set up RowsToCheck
@@ -586,23 +696,22 @@ int main()
 					fallBlocks();
 					updateGridBlocks();
 				}
-
 				if (isGameOver)
 				{
 					clearGrid();
 				}
 				else
 				{
-					//spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
-					spawnBlock(4, 1);
+					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 				}
 			}
 			else {
-				controller.moveDown();
+				controller.moveDown(controller.coords);
 				updateGridBlocks();
 			}
 			previousTime += dropSpeed;
 		}
+		
 		renderBlocks();
 
 		// Swap the screen buffers
@@ -654,8 +763,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	// Move block down
 	if (key == GLFW_KEY_DOWN && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveDown();
-		if (controller.isSettled())
+		controller.moveDown(controller.coords);
+		if (controller.canMoveDown(controller.coords))
+		{
+			return;
+		}
+	}
+	// Rotate block 90 degrees clockwise
+	if (key == GLFW_KEY_UP && (action == GLFW_REPEAT || action == GLFW_PRESS))
+	{
+		controller.rotate();
+		if (controller.canRotate())
 		{
 			return;
 		}
@@ -663,8 +781,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	// Move block left
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveLeft();
-		if (controller.isSettled())
+		controller.moveLeft(controller.coords);
+		if (controller.canMoveDown(controller.coords))
 		{
 			return;
 		}
@@ -672,14 +790,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	// Move block right
 	if (key == GLFW_KEY_RIGHT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveRight();
-		if (controller.isSettled())
+		controller.moveRight(controller.coords);
+		if (controller.canMoveDown(controller.coords))
 		{
 			return;
 		}
 	}
 }
 
+// Clear grid data and render data
 void clearGrid() {
 	for (int i = 0; i < GRID_WIDTH; i++)
 	{
@@ -695,6 +814,7 @@ void clearGrid() {
 	}
 }
 
+// Render
 void renderBlocks() {
 	// Render blocks in array
 	for (int i = 0; i < GRID_WIDTH; i++)
@@ -718,6 +838,7 @@ void renderBlocks() {
 	}
 }
 
+// tranfer color value from grid for rendering
 void updateGridBlocks() {
 	for (int i = 0; i < GRID_WIDTH; i++)
 	{
@@ -749,6 +870,7 @@ void updateGridBlocks() {
 	}
 }
 
+// Transfer data from controller to grid
 bool appendToGrid() {
 	for (int i = 0; i < 4; i++)
 	{
@@ -766,6 +888,7 @@ bool appendToGrid() {
 	return true;
 }
 
+// Check if a row needs removal
 bool checkRowFull(int row) {
 	for (int i = 0; i < GRID_WIDTH; i++)
 	{
@@ -977,6 +1100,7 @@ void spawnBlock(int colorValue, int rotation) {
 // Random generators
 std::mt19937 rng;
 
+// Generate a random color
 int generateNextBlockColor() {
 	// one of 1 to 7
 	rng.seed(std::random_device()());
@@ -985,6 +1109,7 @@ int generateNextBlockColor() {
 	return dist(rng);
 }
 
+// Generate a random rotation
 int generateNextBlockRotation() {
 	// one of 0 to 3
 	rng.seed(std::random_device()());
