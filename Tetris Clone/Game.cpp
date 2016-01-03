@@ -263,8 +263,8 @@ public:
 	}
 
 	// Move a set of coords down
-	void Controller::moveDown(Coord coords[4]) {
-		if (!canMoveDown(coords))
+	void Controller::moveDown(Coord (&coords)[4]) {
+		if (canMoveDown(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -275,8 +275,8 @@ public:
 	}
 
 	// Move a set of coords up
-	void Controller::moveUp(Coord corrds[4]) {
-		if (!canMoveUp(coords))
+	void Controller::moveUp(Coord (&coords)[4]) {
+		if (canMoveUp(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -287,7 +287,7 @@ public:
 	}
 
 	// Move a set of coords left
-	void Controller::moveLeft(Coord coords[4]) {
+	void Controller::moveLeft(Coord (&coords)[4]) {
 		if (canMoveLeft(coords))
 		{
 			for (int i = 0; i < 4; i++)
@@ -299,7 +299,7 @@ public:
 	}
 
 	// Move a set of coords right
-	void Controller::moveRight(Coord coords[4]) {
+	void Controller::moveRight(Coord (&coords)[4]) {
 		if (canMoveRight(coords))
 		{
 			for (int i = 0; i < 4; i++)
@@ -322,79 +322,162 @@ public:
 	}
 
 	// Check if a set of coords can move down
-	bool Controller::canMoveDown(Coord coords[4]) {
+	bool Controller::canMoveDown(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			// Cehck if in range
-			if (coords[i].getRow() <= GRID_HEIGHT && coords[i].getRow() >= 0 && coords[i].getColumn() < GRID_WIDTH && coords[i].getColumn() >= 0)
+			if (isInBound(coords[i]))
 			{
 				if (coords[i].getRow() == 0 || grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0) {
-					return true;
+					return false;
 				}
 			}
 		}
-		return false;
+		return true;
 	}
 
 	// Check if a set of coords can move up
-	bool Controller::canMoveUp(Coord coords[4]) {
+	bool Controller::canMoveUp(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			// Cehck if in range
-			if (coords[i].getRow() <= GRID_HEIGHT && coords[i].getRow() >= 0 && coords[i].getColumn() < GRID_WIDTH && coords[i].getColumn() >= 0)
+			if (isInBound(coords[i]))
 			{
-				if (coords[i].getRow() >= GRID_HEIGHT)
-				{
-					continue;
-				}
 				if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0) {
 					return false;
 				}
 			}
 		}
-		return false;
+		return true;
 	}
 
 	// Check if a set of coords can move left
-	bool Controller::canMoveLeft(Coord coords[4]) {
+	bool Controller::canMoveLeft(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			if (coords[i].getColumn() <= 0)
+			if (isInBound(coords[i]))
 			{
-				return false;
-			}
-			if (coords[i].getRow() >= GRID_HEIGHT)
-			{
-				continue;
-			}
-			if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0) {
-				return false;
+				if (coords[i].getColumn() == 0)
+				{
+					return false;
+				}
+				if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0) {
+					return false;
+				}
 			}
 		}
 		return true;
 	}
 
 	// Check if a set of coords can move right
-	bool Controller::canMoveRight(Coord coords[4]) {
+	bool Controller::canMoveRight(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			if (coords[i].getColumn() >= GRID_WIDTH - 1)
+			if (isInBound(coords[i]))
 			{
-				return false;
-			}
-			if (coords[i].getRow() >= GRID_HEIGHT)
-			{
-				continue;
-			}
-			if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0) {
-				return false;
+				if (coords[i].getColumn() == GRID_WIDTH - 1)
+				{
+					return false;
+				}
+				if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0) {
+					return false;
+				}
 			}
 		}
 		return true;
 	}
 
+	// Check if a set of coords is right above anything
+	bool Controller::isTouchingDown(Coord (&coords)[4]) {
+		if (!canMoveDown(coords))
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				if (isInBound(coords[i]))
+				{
+					if (coords[i].getRow() == 0)
+					{
+						return true;
+					}
+					if (grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	// Check if a set of coords is right below anything
+	bool Controller::isTouchingUp(Coord(&coords)[4]) {
+		if (!canMoveUp(coords))
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				if (isInBound(coords[i]))
+				{
+					if (coords[i].getRow() == GRID_HEIGHT - 1)
+					{
+						return true;
+					}
+					if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	// Check if a set of coords is to the right of anything
+	bool Controller::isTouchingLeft(Coord(&coords)[4]) {
+		if (!canMoveLeft(coords))
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				if (isInBound(coords[i]))
+				{
+					if (coords[i].getColumn() == 0)
+					{
+						return true;
+					}
+					if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	// Check if a set of coords is to the left anything
+	bool Controller::isTouchingRight(Coord(&coords)[4]) {
+		if (!canMoveRight(coords))
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				if (isInBound(coords[i]))
+				{
+					if (coords[i].getColumn() == GRID_WIDTH - 1)
+					{
+						return true;
+					}
+					if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	// Rotate the piece 90 degrees clockwise
-	void rotate() {
+	void Controller::rotate() {
+		// Disable rotation for O
 		if (canRotate() && colorValue != 4)
 		{
 			// If allows rotation, copy from rotationBuffer
@@ -408,37 +491,44 @@ public:
 	}
 
 	// Check if the piece can rotate
-	bool canRotate() {
-		if (updateRotationBuffer())
+	bool Controller::canRotate() {
+		//updateRotationBuffer();
+		if (updateRotationBuffer() && isOutBound(rotationBuffer))
 		{
-			// Cycle through translations
-			for (int i = 0; i < 4; i++)
+			while (!canMoveDown(rotationBuffer) && canMoveUp(rotationBuffer))
 			{
-				if (rotationBuffer[i].getRow() < 0)
+				if (isTouchingDown(rotationBuffer))
 				{
-					while (canMoveUp(rotationBuffer) && !canMoveDown(rotationBuffer))
-					{
-						moveUp(rotationBuffer);
-					}
+					break;
 				}
-				if (rotationBuffer[i].getColumn() < 0)
-				{
-					while (canMoveRight(rotationBuffer) && !canMoveLeft(rotationBuffer))
-					{
-						moveRight(rotationBuffer);
-					}
-				}
-				if (rotationBuffer[i].getRow() >= GRID_HEIGHT)
-				{
-				}
-				if (rotationBuffer[i].getColumn() >= GRID_WIDTH)
-				{
-					while (canMoveLeft(rotationBuffer) && !canMoveRight(rotationBuffer))
-					{
-						moveLeft(rotationBuffer);
-					}
-				}
+				moveUp(rotationBuffer);
 			}
+			while (!canMoveUp(rotationBuffer) && canMoveDown(rotationBuffer))
+			{
+				if (isTouchingUp(rotationBuffer))
+				{
+					break;
+				}
+				moveDown(rotationBuffer);
+			}
+			while (!canMoveLeft(rotationBuffer) && canMoveRight(rotationBuffer))
+			{
+				if (isTouchingRight(rotationBuffer))
+				{
+					break;
+				}
+				moveRight(rotationBuffer);
+			}
+			while (!canMoveRight(rotationBuffer) && canMoveLeft(rotationBuffer))
+			{
+				if (isTouchingLeft(rotationBuffer))
+				{
+					break;
+				}
+				moveLeft(rotationBuffer);
+			}
+		}
+		
 
 			// Check again after translations
 			for (int i = 0; i < 4; i++)
@@ -449,16 +539,19 @@ public:
 					return false;
 				}
 			}
-		}
+			if (isOverlapping(rotationBuffer))
+			{
+				return false;
+			}
 		return true;
 	}
 
-	// Set rotation buffer and returns if new rotation buffer is out of bound
+	// Set rotation buffer, and returns true if new rotation buffer is out of bound
 	// Use rotation matrix to set a rotation buffer
 	// x -> -y
 	// y -> x
 	// a special case when the angle is 90 degrees about z-axis
-	bool updateRotationBuffer() {
+	bool Controller::updateRotationBuffer() {
 		// x and y with respect to center piece
 		int deltaX, deltaY;
 		bool isOutOfBound = false;
@@ -476,6 +569,39 @@ public:
 			}
 		}
 		return isOutOfBound;
+	}
+
+	// Check if a coord is in bound of the well
+	bool isInBound(Coord coord) {
+		if (coord.getColumn() < 0 || coord.getColumn() >= GRID_WIDTH || coord.getRow() < 0 || coord.getRow() >= GRID_HEIGHT)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	// Check if a set of coords is out of bound of the well
+	bool isOutBound(Coord (&coords)[4]) {
+		for (int i = 0; i < 4; i++)
+		{
+			if (coords[i].getColumn() < 0 || coords[i].getColumn() >= GRID_WIDTH || coords[i].getRow() < 0 || coords[i].getRow() >= GRID_HEIGHT)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Check if a set of coords overlaps existing blocks
+	bool isOverlapping(Coord(&coords)[4]) {
+		for (int i = 0; i < 4; i++)
+		{
+			if (grid[coords[i].getColumn()][coords[i].getRow()] != 0)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	int Controller::getColorValue() {
@@ -655,12 +781,13 @@ int main()
 		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		
+
+		// Update controller
 		currentTime = glfwGetTime() - startTime;
 		if (currentTime - previousTime > dropSpeed)
 		{
-			// Update controller
-			if (controller.canMoveDown(controller.coords))
+			// When the tetrimino can't move down
+			if (!controller.canMoveDown(controller.coords))
 			{
 				rowsToCheck.clear();
 				// Set up RowsToCheck
@@ -764,7 +891,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_DOWN && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveDown(controller.coords);
-		if (controller.canMoveDown(controller.coords))
+		if (!controller.canMoveDown(controller.coords))
 		{
 			return;
 		}
@@ -782,7 +909,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveLeft(controller.coords);
-		if (controller.canMoveDown(controller.coords))
+		if (!controller.canMoveDown(controller.coords))
 		{
 			return;
 		}
@@ -791,7 +918,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_RIGHT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveRight(controller.coords);
-		if (controller.canMoveDown(controller.coords))
+		if (!controller.canMoveDown(controller.coords))
 		{
 			return;
 		}
