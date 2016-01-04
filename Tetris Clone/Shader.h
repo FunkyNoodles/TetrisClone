@@ -1,49 +1,49 @@
 #pragma once
+#include <cstdlib>
+#include <ctime>
 #include <string>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
+#include <istream>
 #include <iostream>
+#include <Windows.h>
+#include <algorithm>
 
 #include <glew.h>
+
+#include "resource.h"
 
 class Shader
 {
 public:
 	GLuint Program;
 	// Constructor generates the shader
-	Shader(const GLchar* vertexPath, const GLchar* fragmentPath)
+	Shader(const int vertexName, const int fragmentName)
 	{
-		// 1. Retrieve the vertex/fragment source code from filePath
-		std::string vertexCode;
-		std::string fragmentCode;
-		std::ifstream vShaderFile;
-		std::ifstream fShaderFile;
-		// ensures ifstream objects can throw exceptions:
-		vShaderFile.exceptions(std::ifstream::badbit);
-		fShaderFile.exceptions(std::ifstream::badbit);
-		try
-		{
-			// Open files
-			vShaderFile.open(vertexPath);
-			fShaderFile.open(fragmentPath);
-			std::stringstream vShaderStream, fShaderStream;
-			// Read file's buffer contents into streams
-			vShaderStream << vShaderFile.rdbuf();
-			fShaderStream << fShaderFile.rdbuf();
-			// close file handlers
-			vShaderFile.close();
-			fShaderFile.close();
-			// Convert stream into string
-			vertexCode = vShaderStream.str();
-			fragmentCode = fShaderStream.str();
-		}
-		catch (std::ifstream::failure e)
-		{
-			std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
-		}
-		const GLchar* vShaderCode = vertexCode.c_str();
-		const GLchar * fShaderCode = fragmentCode.c_str();
-		// 2. Compile shaders
+		// Load shaders
+		DWORD vertSize = 0;
+		DWORD fragSize = 0;
+
+		const char* vertCode = NULL;
+		const char* fragCode = NULL;
+
+		loadFileFromResource(vertexName, TEXTFILE, vertSize, vertCode);
+		loadFileFromResource(fragmentName, TEXTFILE, fragSize, fragCode);
+
+		char* vertBuffer = new char[vertSize + 1];
+		char* fragBuffer = new char[fragSize + 1];
+
+		::memcpy(vertBuffer, vertCode, vertSize);
+		::memcpy(fragBuffer, fragCode, fragSize);
+
+		vertBuffer[vertSize] = 0;
+		fragBuffer[fragSize] = 0;
+
+		const GLchar* vShaderCode = (GLchar*)vertBuffer;
+		const GLchar * fShaderCode = (GLchar*)fragBuffer;
+
+		// Compile shaders
 		GLuint vertex, fragment;
 		GLint success;
 		GLchar infoLog[512];
@@ -90,6 +90,15 @@ public:
 	void Use()
 	{
 		glUseProgram(this->Program);
+	}
+
+	// load vertex and fragment shaders
+	void loadFileFromResource(int name, int type, DWORD& size, const char*& data) {
+		HMODULE handle = ::GetModuleHandle(NULL);
+		HRSRC res = ::FindResource(handle, MAKEINTRESOURCE(name), MAKEINTRESOURCE(type));
+		HGLOBAL resData = ::LoadResource(handle, res);
+		size = ::SizeofResource(handle, res);
+		data = static_cast<const char*>(::LockResource(resData));
 	}
 };
 

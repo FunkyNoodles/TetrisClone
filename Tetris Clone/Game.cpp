@@ -21,6 +21,7 @@
 // Other includes 
 #include "Shader.h"
 #include "Coord.h"
+#include "resource.h"
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -66,7 +67,7 @@ static int grid[GRID_WIDTH][GRID_HEIGHT];
 class Block{
 public:
 	GLuint VAO, VBO, EBO;
-	Shader blockShader = Shader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+	Shader blockShader = Shader(IDR_BLOCK_VERT, IDR_BLOCK_FRAG);
 	Block::Block(int column, int row, int colorValue) {
 		this->colorValue = colorValue;
 		this->column = column;
@@ -744,7 +745,7 @@ int main()
 	monitor = glfwGetPrimaryMonitor();
 
 	// Build and compile shader program
-	Shader backColumnsShader("backColumnVertexShader.vert", "backColumnFragmentShader.frag");
+	Shader backColumnsShader = Shader(IDR_BACK_COLUMN_VERT, IDR_BACK_COLUMN_FRAG);
 
 	// Basic tile information
 	int pixelX = 0; // number of pixels from left border
