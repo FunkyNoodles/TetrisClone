@@ -389,6 +389,7 @@ public:
 
 	// Check if a set of coords is right above anything
 	bool Controller::isTouchingDown(Coord (&coords)[4]) {
+		bool value = false;
 		if (!canMoveDown(coords))
 		{
 			for (int i = 0; i < 4; i++)
@@ -397,20 +398,33 @@ public:
 				{
 					if (coords[i].getRow() == 0)
 					{
-						return true;
+						value = value || true;
 					}
-					if (grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0)
+					else if (grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0)
 					{
-						return true;
+						value = value || true;
 					}
+					else
+					{
+						value = value || false;
+					}
+				}
+				else
+				{
+					return false;
 				}
 			}
 		}
-		return false;
+		else
+		{
+			return false;
+		}
+		return value;
 	}
 
 	// Check if a set of coords is right below anything
-	bool Controller::isTouchingUp(Coord(&coords)[4]) {
+	bool Controller::isTouchingUp(Coord (&coords)[4]) {
+		bool value = false;;
 		if (!canMoveUp(coords))
 		{
 			for (int i = 0; i < 4; i++)
@@ -419,42 +433,68 @@ public:
 				{
 					if (coords[i].getRow() == GRID_HEIGHT - 1)
 					{
-						return true;
+						value = value || true;
 					}
-					if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0)
+					else if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0)
 					{
-						return true;
+						value = value || true;
 					}
+					else
+					{
+						value = value || false;
+					}
+				}
+				else
+				{
+					return false;
 				}
 			}
 		}
-		return false;
+		else
+		{
+			return false;
+		}
+		return value;
 	}
 
 	// Check if a set of coords is to the right of anything
-	bool Controller::isTouchingLeft(Coord(&coords)[4]) {
+	bool Controller::isTouchingLeft(Coord (&coords)[4]) {
+		bool value = false;
 		if (!canMoveLeft(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
 				if (isInBound(coords[i]))
 				{
-					if (coords[i].getColumn() == 0)
+					if (coords[i].getColumn() == 0 && !isOverlapping(coords[i]))
 					{
-						return true;
+						value = value || true;
 					}
-					if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0)
+					else if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0)
 					{
-						return true;
+						value = value || true;
 					}
+					else
+					{
+						value = value || false;
+					}
+				}
+				else
+				{
+					return false;
 				}
 			}
 		}
-		return false;
+		else
+		{
+			return false;
+		}
+		return value;
 	}
 
 	// Check if a set of coords is to the left anything
-	bool Controller::isTouchingRight(Coord(&coords)[4]) {
+	bool Controller::isTouchingRight(Coord (&coords)[4]) {
+		bool value = false;
 		if (!canMoveRight(coords))
 		{
 			for (int i = 0; i < 4; i++)
@@ -463,16 +503,28 @@ public:
 				{
 					if (coords[i].getColumn() == GRID_WIDTH - 1)
 					{
-						return true;
+						value = value || true;
 					}
-					if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0)
+					else if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0)
 					{
-						return true;
+						value = value || true;
 					}
+					else
+					{
+						value = value || false;
+					}
+				}
+				else
+				{
+					return false;
 				}
 			}
 		}
-		return false;
+		else
+		{
+			return false;
+		}
+		return value;
 	}
 
 	// Rotate the piece 90 degrees clockwise
@@ -492,44 +544,64 @@ public:
 
 	// Check if the piece can rotate
 	bool Controller::canRotate() {
-		//updateRotationBuffer();
-		if (updateRotationBuffer() && isOutBound(rotationBuffer))
+		bool isFirst = true;
+		updateRotationBuffer();
+		//std::cout << isOutBound(rotationBuffer) << " "  << isOverlapping(rotationBuffer) << std::endl;
+		if (isOutBound(rotationBuffer) || isOverlapping(rotationBuffer))
 		{
+			isFirst = true;
 			while (!canMoveDown(rotationBuffer) && canMoveUp(rotationBuffer))
 			{
-				if (isTouchingDown(rotationBuffer))
+				if (isTouchingDown(rotationBuffer) && !isFirst)
 				{
 					break;
 				}
-				moveUp(rotationBuffer);
+				else
+				{
+					moveUp(rotationBuffer);
+				}
+				isFirst = false;
 			}
+			isFirst = true;
 			while (!canMoveUp(rotationBuffer) && canMoveDown(rotationBuffer))
 			{
-				if (isTouchingUp(rotationBuffer))
+				if (isTouchingUp(rotationBuffer) && !isFirst)
 				{
 					break;
 				}
-				moveDown(rotationBuffer);
+				else
+				{
+					moveDown(rotationBuffer);
+				}
+				isFirst = false;
 			}
+			isFirst = true;
+			//std::cout << isTouchingLeft(rotationBuffer) << std::endl;
 			while (!canMoveLeft(rotationBuffer) && canMoveRight(rotationBuffer))
 			{
-				if (isTouchingRight(rotationBuffer))
+				if (isTouchingLeft(rotationBuffer) && !isFirst)
 				{
 					break;
 				}
-				moveRight(rotationBuffer);
+				else
+				{
+					moveRight(rotationBuffer);
+				}
+				isFirst = false;
 			}
+			isFirst = true;
 			while (!canMoveRight(rotationBuffer) && canMoveLeft(rotationBuffer))
 			{
-				if (isTouchingLeft(rotationBuffer))
+				if (isTouchingRight(rotationBuffer) && !isFirst)
 				{
 					break;
 				}
-				moveLeft(rotationBuffer);
+				else
+				{
+					moveLeft(rotationBuffer);
+				}
+				isFirst = false;
 			}
-		}
-		
-
 			// Check again after translations
 			for (int i = 0; i < 4; i++)
 			{
@@ -543,6 +615,10 @@ public:
 			{
 				return false;
 			}
+		}
+		
+
+			
 		return true;
 	}
 
@@ -593,13 +669,22 @@ public:
 	}
 
 	// Check if a set of coords overlaps existing blocks
-	bool isOverlapping(Coord(&coords)[4]) {
+	bool isOverlapping(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			if (grid[coords[i].getColumn()][coords[i].getRow()] != 0)
 			{
 				return true;
 			}
+		}
+		return false;
+	}
+
+	// Check if a coord overlaps existing blocks
+	bool isOverlapping(Coord &coord) {
+		if (grid[coord.getColumn()][coord.getRow()] != 0)
+		{
+			return true;
 		}
 		return false;
 	}
@@ -838,7 +923,8 @@ int main()
 			}
 			previousTime += dropSpeed;
 		}
-		
+		/*std::cout << controller.canMoveLeft(controller.coords) << "  ";
+		std::cout << controller.isTouchingLeft(controller.coords) << std::endl;*/
 		renderBlocks();
 
 		// Swap the screen buffers
@@ -882,9 +968,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	// Test key
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
 	{
-		for (int i = 2; i < GRID_WIDTH; i++)
+		for (int i = 0; i < GRID_HEIGHT - 1; i++)
 		{
-			grid[i][0] = 4;
+			grid[0][i] = 3;
+			grid[GRID_WIDTH - 1][i] = 3;
 		}
 	}
 	// Move block down
@@ -897,13 +984,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 	}
 	// Rotate block 90 degrees clockwise
-	if (key == GLFW_KEY_UP && (action == GLFW_REPEAT || action == GLFW_PRESS))
+	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
 	{
 		controller.rotate();
-		if (controller.canRotate())
-		{
-			return;
-		}
 	}
 	// Move block left
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
