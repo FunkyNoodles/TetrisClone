@@ -198,6 +198,7 @@ int findNextFilledLine(int row);
 void fillEmptySpots(int row);
 int generateNextBlockColor();
 int generateNextBlockRotation();
+void initGridBlock();
 
 
 
@@ -820,6 +821,9 @@ int main()
 		backColumnsIndices[6 * i + 4] = 4 * i + 2;
 		backColumnsIndices[6 * i + 5] = 4 * i + 3;
 	}
+
+	// Initialization
+	initGridBlock();
 	
 	GLuint backVBO, backVAO, backEBO;
 	glGenVertexArrays(1, &backVAO);
@@ -854,6 +858,7 @@ int main()
 	double previousTime = startTime; // Time when previous update happened
 	double currentTime;
 	bool isGameOver;
+	bool isRowCheckRepeat = false;
 	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
@@ -884,7 +889,7 @@ int main()
 				// Set up RowsToCheck
 				for (int i = 0; i < 4; i++)
 				{
-					bool isRowCheckRepeat = false;
+					isRowCheckRepeat = false;
 					for (int j = 0; j < (int)(rowsToCheck.size()); j++)
 					{
 						if (rowsToCheck[j] == controller.coords[i].getRow())
@@ -918,10 +923,7 @@ int main()
 				{
 					clearGrid();
 				}
-				else
-				{
-					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
-				}
+				spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 			}
 			else {
 				controller.moveDown(controller.coords);
@@ -1077,7 +1079,7 @@ void updateGridBlocks() {
 				{
 					delete gridBlock[i][j];
 					gridBlock[i][j] = nullptr;
-					if (grid[i][j] != 0)
+					if (grid[i][j] > 0)
 					{
 						gridBlock[i][j] = new Block(i, j, grid[i][j]);
 					}
@@ -1339,4 +1341,14 @@ int generateNextBlockRotation() {
 	std::uniform_int_distribution<> dist(0, 3);
 
 	return dist(rng);
+}
+
+void initGridBlock() {
+	for (int i = 0; i < GRID_WIDTH; i++)
+	{
+		for (int j = 0; j < GRID_HEIGHT; j++)
+		{
+			gridBlock[i][j] = nullptr;
+		}
+	}
 }
