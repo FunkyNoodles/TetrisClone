@@ -23,56 +23,22 @@
 #include "Coord.h"
 #include "resource.h"
 
-// Function prototypes
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
-void clearGrid();
-void renderBlocks();
-void updateGridBlocks();
-bool appendToGrid();
-bool checkRowFull(int row);
-void removeRow(int row);
-void spawnBlock(int colorValue, int rotation);
-void fallBlocks();
-int findNextFilledLine(int row);
-void fillEmptySpots(int row);
-int generateNextBlockColor();
-int generateNextBlockRotation();
-
-// Windows
+// Screen
 const int WIDTH = 800, HEIGHT = 600;
-
-// GL Variables
-GLFWmonitor* monitor;
-GLFWvidmode* desktopMode;
-
-// Game Variables
-bool fullscreen = false;
-double dropSpeed = 0.7; // default drop speed
 const int GRID_WIDTH = 10;
 const int GRID_HEIGHT = 20;
 const int TILE_WIDTH = HEIGHT / GRID_HEIGHT; // Tile width of a tile is demermined by window pixel height
-/*
- * -1 - to be replaced by above row
- * 0 - nothing
- * 1 - occupied by I
- * 2 - occupied by J
- * 3 - occupied by L
- * 4 - occupied by O
- * 5 - occupied by S
- * 6 - occupied by T
- * 7 - occupied by Z
- */
-static int grid[GRID_WIDTH][GRID_HEIGHT];
 
-class Block{
+// Classes
+class Block {
 public:
 	GLuint VAO, VBO, EBO;
-	Shader blockShader = Shader(IDR_BLOCK_VERT, IDR_BLOCK_FRAG);
+	GLuint indices[6];
 	Block::Block(int column, int row, int colorValue) {
 		this->colorValue = colorValue;
 		this->column = column;
 		this->row = row;
-		
+
 		setVertices();
 		indices[0] = 0;
 		indices[1] = 1;
@@ -174,12 +140,12 @@ public:
 		glBindVertexArray(0);
 	}
 
-	void Block::render() {
-		blockShader.Use();
-		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
-	}
+	/*void Block::render() {
+	blockShader.Use();
+	glBindVertexArray(VAO);
+	glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+	}*/
 
 	int Block::getColorValue() {
 		return colorValue;
@@ -211,11 +177,50 @@ public:
 	}
 private:
 	GLdouble vertices[24]; // 3 pos 3 color
-	GLuint indices[6];
+
 	int colorValue;
 	int column;
 	int row;
 };
+
+// Function prototypes
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void clearGrid();
+void renderBlocks();
+void renderBlock(Block* block);
+void updateGridBlocks();
+bool appendToGrid();
+bool checkRowFull(int row);
+void removeRow(int row);
+void spawnBlock(int colorValue, int rotation);
+void fallBlocks();
+int findNextFilledLine(int row);
+void fillEmptySpots(int row);
+int generateNextBlockColor();
+int generateNextBlockRotation();
+
+
+
+// GL Variables
+GLFWmonitor* monitor;
+GLFWvidmode* desktopMode;
+
+// Game Variables
+bool fullscreen = false;
+double dropSpeed = 0.7; // default drop speed
+
+/*
+ * -1 - to be replaced by above row
+ * 0 - nothing
+ * 1 - occupied by I
+ * 2 - occupied by J
+ * 3 - occupied by L
+ * 4 - occupied by O
+ * 5 - occupied by S
+ * 6 - occupied by T
+ * 7 - occupied by Z
+ */
+static int grid[GRID_WIDTH][GRID_HEIGHT];
 
 static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 
@@ -391,7 +396,7 @@ public:
 	// Check if a set of coords is right above anything
 	bool Controller::isTouchingDown(Coord (&coords)[4]) {
 		bool value = false;
-		if (!canMoveDown(coords))
+		if (!canMoveDown(coords) && !isOverlapping(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -426,7 +431,7 @@ public:
 	// Check if a set of coords is right below anything
 	bool Controller::isTouchingUp(Coord (&coords)[4]) {
 		bool value = false;;
-		if (!canMoveUp(coords))
+		if (!canMoveUp(coords) && !isOverlapping(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -461,7 +466,7 @@ public:
 	// Check if a set of coords is to the right of anything
 	bool Controller::isTouchingLeft(Coord (&coords)[4]) {
 		bool value = false;
-		if (!canMoveLeft(coords))
+		if (!canMoveLeft(coords) && !isOverlapping(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -496,7 +501,7 @@ public:
 	// Check if a set of coords is to the left anything
 	bool Controller::isTouchingRight(Coord (&coords)[4]) {
 		bool value = false;
-		if (!canMoveRight(coords))
+		if (!canMoveRight(coords) && !isOverlapping(coords))
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -714,7 +719,7 @@ private:
 };
 
 static Controller controller = Controller();
-
+Shader blockShader;
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
@@ -746,7 +751,7 @@ int main()
 
 	// Build and compile shader program
 	Shader backColumnsShader = Shader(IDR_BACK_COLUMN_VERT, IDR_BACK_COLUMN_FRAG);
-
+	blockShader = Shader(IDR_BLOCK_VERT, IDR_BLOCK_FRAG);
 	// Basic tile information
 	int pixelX = 0; // number of pixels from left border
 	int pixelY = 0; // number of pixels from bottom border
@@ -1034,7 +1039,7 @@ void renderBlocks() {
 		{
 			if (gridBlock[i][j] != nullptr)
 			{
-				gridBlock[i][j]->render();
+				renderBlock(gridBlock[i][j]);
 			}
 		}
 	}
@@ -1044,9 +1049,16 @@ void renderBlocks() {
 		if (controller.coords[i].getRow() < GRID_HEIGHT	&& controller.coords[i].getRow() >= 0 && controller.coords[i].getColumn() < GRID_WIDTH && controller.coords[i].getColumn() >= 0)
 		{
 			// if the block is in the screen
-			controller.blocks[i]->render();
+			renderBlock(controller.blocks[i]);
 		}
 	}
+}
+
+void renderBlock(Block* block) {
+	blockShader.Use();
+	glBindVertexArray(block->VAO);
+	glDrawElements(GL_TRIANGLES, sizeof(block->indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
 }
 
 // tranfer color value from grid for rendering

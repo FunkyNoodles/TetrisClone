@@ -1,14 +1,7 @@
 #pragma once
-#include <cstdlib>
-#include <ctime>
 #include <string>
-#include <cstdio>
-#include <fstream>
-#include <sstream>
-#include <istream>
 #include <iostream>
 #include <Windows.h>
-#include <algorithm>
 
 #include <glew.h>
 
@@ -18,8 +11,9 @@ class Shader
 {
 public:
 	GLuint Program;
+	Shader() {}
 	// Constructor generates the shader
-	Shader(const int vertexName, const int fragmentName)
+	Shader(int vertexName, int fragmentName)
 	{
 		// Load shaders
 		DWORD vertSize = 0;
