@@ -11,4 +11,4 @@ A Tetris game from scratch using OpenGL and C++
 - Add some game menus like pause, restart, etc.
 
 ## Known bugs
-- Memory usage seems to increase while playing
+- 
