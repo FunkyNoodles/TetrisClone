@@ -193,6 +193,7 @@ bool appendToGrid();
 bool checkRowFull(int row);
 void removeRow(int row);
 void spawnBlock(int colorValue, int rotation);
+void blockDropped();
 void fallBlocks();
 int findNextFilledLine(int row);
 void fillEmptySpots(int row);
@@ -209,7 +210,8 @@ GLFWvidmode* desktopMode;
 // Game Variables
 bool fullscreen = false;
 double dropSpeed = 0.7; // default drop speed
-
+unsigned int score = 0; // game score
+bool isGameOver = false;
 /*
  * -1 - to be replaced by above row
  * 0 - nothing
@@ -847,9 +849,6 @@ int main()
 
 	glBindVertexArray(0); // Unbind VAO
 
-	// Rows to check for completeness after block is set down
-	std::vector<int> rowsToCheck;
-
 	clearGrid();
 
 	spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
@@ -857,8 +856,6 @@ int main()
 	double startTime = glfwGetTime(); // time when game starts
 	double previousTime = startTime; // Time when previous update happened
 	double currentTime;
-	bool isGameOver;
-	bool isRowCheckRepeat = false;
 	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
@@ -885,40 +882,7 @@ int main()
 			// When the tetrimino can't move down
 			if (!controller.canMoveDown(controller.coords))
 			{
-				rowsToCheck.clear();
-				// Set up RowsToCheck
-				for (int i = 0; i < 4; i++)
-				{
-					isRowCheckRepeat = false;
-					for (int j = 0; j < (int)(rowsToCheck.size()); j++)
-					{
-						if (rowsToCheck[j] == controller.coords[i].getRow())
-						{
-							isRowCheckRepeat = true;
-							break;
-						}
-					}
-					if (!isRowCheckRepeat)
-					{
-						rowsToCheck.push_back(controller.coords[i].getRow());
-					}
-				}
-				isGameOver = !appendToGrid();
-				updateGridBlocks();
-				
-				// Remove rows if needed
-				if (!rowsToCheck.empty())
-				{
-					for (int i = rowsToCheck.size() - 1; i >= 0; i--)
-					{
-						if (checkRowFull(rowsToCheck[i]))
-						{
-							removeRow(rowsToCheck[i]);
-						}
-					}
-					fallBlocks();
-					updateGridBlocks();
-				}
+				blockDropped();
 				if (isGameOver)
 				{
 					clearGrid();
@@ -1319,6 +1283,47 @@ void spawnBlock(int colorValue, int rotation) {
 			break;
 		}
 		break;
+	}
+}
+
+// Run to check when dropped
+void blockDropped() {
+	// Rows to check for completeness after block is set down
+	std::vector<int> rowsToCheck;
+	bool isRowCheckRepeat = false;
+	rowsToCheck.clear();
+	// Set up RowsToCheck
+	for (int i = 0; i < 4; i++)
+	{
+		isRowCheckRepeat = false;
+		for (int j = 0; j < (int)(rowsToCheck.size()); j++)
+		{
+			if (rowsToCheck[j] == controller.coords[i].getRow())
+			{
+				isRowCheckRepeat = true;
+				break;
+			}
+		}
+		if (!isRowCheckRepeat)
+		{
+			rowsToCheck.push_back(controller.coords[i].getRow());
+		}
+	}
+	isGameOver = !appendToGrid();
+	updateGridBlocks();
+
+	// Remove rows if needed
+	if (!rowsToCheck.empty())
+	{
+		for (int i = rowsToCheck.size() - 1; i >= 0; i--)
+		{
+			if (checkRowFull(rowsToCheck[i]))
+			{
+				removeRow(rowsToCheck[i]);
+			}
+		}
+		fallBlocks();
+		updateGridBlocks();
 	}
 }
 
