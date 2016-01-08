@@ -210,7 +210,6 @@ GLFWvidmode* desktopMode;
 // Game Variables
 bool fullscreen = false;
 double dropSpeed = 0.7; // default drop speed
-unsigned int score = 0; // game score
 bool isGameOver = false;
 /*
  * -1 - to be replaced by above row
@@ -895,8 +894,6 @@ int main()
 			}
 			previousTime += dropSpeed;
 		}
-		/*std::cout << controller.canMoveLeft(controller.coords) << "  ";
-		std::cout << controller.isTouchingLeft(controller.coords) << std::endl;*/
 		renderBlocks();
 
 		// Swap the screen buffers
