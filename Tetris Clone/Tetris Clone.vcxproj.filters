@@ -21,11 +21,11 @@
     <ClCompile Include="Game.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GameInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="backColumnFragmentShader.frag" />
-    <None Include="backColumnVertexShader.vert" />
-    <None Include="blockVertexShader.vert" />
     <None Include="text1.bin">
       <Filter>Resource Files</Filter>
     </None>
@@ -40,9 +40,15 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GameInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="blockFragmentShader.frag.rc" />
+    <Text Include="backColumnFragmentShader.frag" />
+    <Text Include="backColumnVertexShader.vert" />
+    <Text Include="blockFragmentShader.frag" />
+    <Text Include="blockVertexShader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc">

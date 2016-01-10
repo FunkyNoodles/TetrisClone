@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GameInfo.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Game.cpp" />
   </ItemGroup>
@@ -150,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="Coord.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="GameInfo.h" />
     <ClInclude Include="Shader.h" />
   </ItemGroup>
   <ItemGroup>

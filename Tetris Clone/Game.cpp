@@ -22,6 +22,7 @@
 #include "Shader.h"
 #include "Coord.h"
 #include "resource.h"
+#include "GameInfo.h"
 
 // Screen
 const int WIDTH = 800, HEIGHT = 600;
@@ -209,7 +210,6 @@ GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
-double dropSpeed = 0.7; // default drop speed
 bool isGameOver = false;
 /*
  * -1 - to be replaced by above row
@@ -721,6 +721,7 @@ private:
 };
 
 static Controller controller = Controller();
+static GameInfo gameInfo = GameInfo();
 Shader blockShader;
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -874,25 +875,28 @@ int main()
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		// Update controller
-		currentTime = glfwGetTime() - startTime;
-		if (currentTime - previousTime > dropSpeed)
+		if (!gameInfo.isGamePaused())
 		{
-			// When the tetrimino can't move down
-			if (!controller.canMoveDown(controller.coords))
+			// Update controller
+			currentTime = glfwGetTime() - startTime;
+			if (currentTime - previousTime > gameInfo.getDropSpeed())
 			{
-				blockDropped();
-				if (isGameOver)
+				// When the tetrimino can't move down
+				if (!controller.canMoveDown(controller.coords))
 				{
-					clearGrid();
+					blockDropped();
+					if (isGameOver)
+					{
+						clearGrid();
+					}
+					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 				}
-				spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+				else {
+					controller.moveDown(controller.coords);
+					updateGridBlocks();
+				}
+				previousTime += gameInfo.getDropSpeed();
 			}
-			else {
-				controller.moveDown(controller.coords);
-				updateGridBlocks();
-			}
-			previousTime += dropSpeed;
 		}
 		renderBlocks();
 
@@ -974,6 +978,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		{
 			return;
 		}
+	}
+	// Pause or Unpause game
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)
+	{
+		gameInfo.invertGamePaused();
 	}
 }
 
