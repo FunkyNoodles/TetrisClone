@@ -70,6 +70,7 @@ public:
 		vertices[18] = (WIDTH - ((double)(GRID_WIDTH - column - 1)*TILE_WIDTH)) / (WIDTH / 2) - 1.0;
 		vertices[19] = (HEIGHT - ((double)(GRID_HEIGHT - row - 1)*TILE_WIDTH)) / (HEIGHT / 2) - 1.0;
 		vertices[20] = 1.0;
+
 		// Color is the same so a loop will do
 		for (int i = 0; i < 4; i++)
 		{
@@ -117,6 +118,11 @@ public:
 				vertices[6 * i + 4] = 0.0;
 				vertices[6 * i + 5] = 0.0;
 				break;
+			case 8:
+				// Projection block - grey
+				vertices[6 * i + 3] = 0.5;
+				vertices[6 * i + 4] = 0.5;
+				vertices[6 * i + 5] = 0.5;
 			default:
 				break;
 			}
@@ -140,13 +146,6 @@ public:
 		glEnableVertexAttribArray(1);
 		glBindVertexArray(0);
 	}
-
-	/*void Block::render() {
-	blockShader.Use();
-	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
-	}*/
 
 	int Block::getColorValue() {
 		return colorValue;
@@ -203,7 +202,6 @@ int generateNextBlockRotation();
 void initGridBlock();
 
 
-
 // GL Variables
 GLFWmonitor* monitor;
 GLFWvidmode* desktopMode;
@@ -233,6 +231,8 @@ public:
 	// Holds what coords will be after rotation
 	Coord rotationBuffer[4];
 	Block* blocks[4];
+	Coord projectionBuffer[4];
+	Block* projectionBlocks[4];
 
 	Controller::Controller() {};
 
@@ -245,6 +245,10 @@ public:
 		rotationBuffer[1] = Coord(c1, r1);
 		rotationBuffer[2] = Coord(c2, r2);
 		rotationBuffer[3] = Coord(c3, r3);
+		projectionBuffer[0] = Coord(c0, r0);
+		projectionBuffer[1] = Coord(c1, r1);
+		projectionBuffer[2] = Coord(c2, r2);
+		projectionBuffer[3] = Coord(c3, r3);
 		this->colorValue = colorValue;
 	}
 
@@ -267,6 +271,12 @@ public:
 				blocks[i] = nullptr;
 			}
 			blocks[i] = new Block(coords[i].getColumn(), coords[i].getRow(), colorValue);
+			if (projectionBlocks[i] != nullptr)
+			{
+				delete projectionBlocks[i];
+				projectionBlocks[i] = nullptr;
+			}
+			projectionBlocks[i] = new Block(coords[i].getColumn(), coords[i].getRow(), 8);
 		}
 	}
 
@@ -624,9 +634,6 @@ public:
 				return false;
 			}
 		}
-		
-
-			
 		return true;
 	}
 
@@ -697,6 +704,29 @@ public:
 		return false;
 	}
 
+	// Update where project block is
+	void updateBlockProjection() {
+		// Set projection block position to controller
+		for (int i = 0; i < 4; i++)
+		{
+			projectionBuffer[i].setColumn(coords[i].getColumn());
+			projectionBuffer[i].setRow(coords[i].getRow());
+		}
+		// Find where the projection is
+		while (!isTouchingDown(projectionBuffer))
+		{
+			moveDown(projectionBuffer);
+		}
+		// Update projection blocks render
+		for (int i = 0; i < 4; i++)
+		{
+			projectionBlocks[i]->setColumn(projectionBuffer[i].getColumn());
+			projectionBlocks[i]->setRow(projectionBuffer[i].getRow());
+			projectionBlocks[i]->setVertices();
+			projectionBlocks[i]->setVAO();
+		}
+	}
+
 	int Controller::getColorValue() {
 		return colorValue;
 	}
@@ -712,6 +742,11 @@ public:
 			{
 				delete blocks[i];
 				blocks[i] = nullptr;
+			}
+			if (projectionBlocks[i] != nullptr)
+			{
+				delete projectionBlocks[i];
+				projectionBlocks[i] = nullptr;
 			}
 		}
 	}
@@ -803,15 +838,15 @@ int main()
 			// Alternate colors
 			if (i % 2 == 0)
 			{
-				backColumnVertices[6 * (4 * i + j) + 3] = 1.0; // color R
-				backColumnVertices[6 * (4 * i + j) + 4] = 1.0; // color G
-				backColumnVertices[6 * (4 * i + j) + 5] = 1.0; // color B
+				backColumnVertices[6 * (4 * i + j) + 3] = 0.99; // color R
+				backColumnVertices[6 * (4 * i + j) + 4] = 0.99; // color G
+				backColumnVertices[6 * (4 * i + j) + 5] = 0.99; // color B
 			}
 			else
 			{
-				backColumnVertices[6 * (4 * i + j) + 3] = 0.7; // color R
-				backColumnVertices[6 * (4 * i + j) + 4] = 0.7; // color G
-				backColumnVertices[6 * (4 * i + j) + 5] = 0.7; // color B
+				backColumnVertices[6 * (4 * i + j) + 3] = 0.8; // color R
+				backColumnVertices[6 * (4 * i + j) + 4] = 0.8; // color G
+				backColumnVertices[6 * (4 * i + j) + 5] = 0.8; // color B
 			}
 			
 		}
@@ -960,11 +995,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
 	{
 		controller.rotate();
+		controller.updateBlockProjection();
 	}
 	// Move block left
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveLeft(controller.coords);
+		controller.updateBlockProjection();
 		if (!controller.canMoveDown(controller.coords))
 		{
 			return;
@@ -974,6 +1011,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_RIGHT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
 		controller.moveRight(controller.coords);
+		controller.updateBlockProjection();
 		if (!controller.canMoveDown(controller.coords))
 		{
 			return;
@@ -1015,9 +1053,14 @@ void renderBlocks() {
 			}
 		}
 	}
-	// Render controller blocks
+	// Render projection blocks
 	for (int i = 0; i < 4; i++)
 	{
+		renderBlock(controller.projectionBlocks[i]);
+	}
+	// Render controller blocks
+	for (int i = 0; i < 4; i++)
+	{	
 		if (controller.coords[i].getRow() < GRID_HEIGHT	&& controller.coords[i].getRow() >= 0 && controller.coords[i].getColumn() < GRID_WIDTH && controller.coords[i].getColumn() >= 0)
 		{
 			// if the block is in the screen
@@ -1290,6 +1333,7 @@ void spawnBlock(int colorValue, int rotation) {
 		}
 		break;
 	}
+	controller.updateBlockProjection();
 }
 
 // Run to check when dropped

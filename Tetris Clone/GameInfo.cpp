@@ -14,7 +14,6 @@ GameInfo::~GameInfo()
 int GameInfo::getScore()
 {
 	return score;
-
 }
 
 void GameInfo::setScore(unsigned int score)
