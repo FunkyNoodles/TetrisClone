@@ -564,8 +564,7 @@ public:
 	bool Controller::canRotate() {
 		bool isFirst = true;
 		updateRotationBuffer();
-		//std::cout << isOutBound(rotationBuffer) << " "  << isOverlapping(rotationBuffer) << std::endl;
-		if (isOutBound(rotationBuffer) || isOverlapping(rotationBuffer))
+		if (isOutOfBoundThreeSides(rotationBuffer) || isOverlapping(rotationBuffer))
 		{
 			isFirst = true;
 			while (!canMoveDown(rotationBuffer) && canMoveUp(rotationBuffer))
@@ -580,7 +579,7 @@ public:
 				}
 				isFirst = false;
 			}
-			isFirst = true;
+			/*isFirst = true;
 			while (!canMoveUp(rotationBuffer) && canMoveDown(rotationBuffer))
 			{
 				if (isTouchingUp(rotationBuffer) && !isFirst)
@@ -592,7 +591,7 @@ public:
 					moveDown(rotationBuffer);
 				}
 				isFirst = false;
-			}
+			}*/
 			isFirst = true;
 			//std::cout << isTouchingLeft(rotationBuffer) << std::endl;
 			while (!canMoveLeft(rotationBuffer) && canMoveRight(rotationBuffer))
@@ -672,7 +671,7 @@ public:
 	}
 
 	// Check if a set of coords is out of bound of the well
-	bool isOutBound(Coord (&coords)[4]) {
+	bool isOutOfBound(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
 			if (coords[i].getColumn() < 0 || coords[i].getColumn() >= GRID_WIDTH || coords[i].getRow() < 0 || coords[i].getRow() >= GRID_HEIGHT)
@@ -683,11 +682,20 @@ public:
 		return false;
 	}
 
-	// Check if a set of coords overlaps existing blocks
-	bool isOverlapping(Coord (&coords)[4]) {
+	// Check if a coord is out of bound of the well
+	bool isOutOfBound(Coord &coord) {
+		if (coord.getColumn() < 0 || coord.getColumn() >= GRID_WIDTH || coord.getRow() <0 || coord.getRow() >= GRID_HEIGHT)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	// Check if a set of coords is out of the borders of the well (excluding the top side)
+	bool isOutOfBoundThreeSides(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			if (grid[coords[i].getColumn()][coords[i].getRow()] != 0)
+			if (coords[i].getColumn() < 0 || coords[i].getColumn() >= GRID_WIDTH || coords[i].getRow() < 0)
 			{
 				return true;
 			}
@@ -695,11 +703,38 @@ public:
 		return false;
 	}
 
-	// Check if a coord overlaps existing blocks
-	bool isOverlapping(Coord &coord) {
-		if (grid[coord.getColumn()][coord.getRow()] != 0)
+	// Check if a coord is out of the borders of the well (excluding the top side)
+	bool isOutOfBoundThreeSides(Coord &coord) {
+		if (coord.getColumn() < 0 || coord.getColumn() >= GRID_WIDTH || coord.getRow() < 0)
 		{
 			return true;
+		}
+		return false;
+	}
+
+	// Check if a set of coords overlaps existing blocks
+	bool isOverlapping(Coord (&coords)[4]) {
+		for (int i = 0; i < 4; i++)
+		{
+			if (!isOutOfBound(coords[i]))
+			{
+				if (grid[coords[i].getColumn()][coords[i].getRow()] != 0)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	// Check if a coord overlaps existing blocks
+	bool isOverlapping(Coord &coord) {
+		if (!isOutOfBound(coord))
+		{
+			if (grid[coord.getColumn()][coord.getRow()] != 0)
+			{
+				return true;
+			}
 		}
 		return false;
 	}
