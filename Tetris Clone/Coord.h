@@ -19,6 +19,10 @@ public:
 	void setRow(int row) {
 		this->row = row;
 	}
+	void operator=(const Coord & x) {
+		this->column = x.column;
+		this->row = x.row;
+	}
 private:
 	int column, row;
 };

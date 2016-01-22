@@ -200,6 +200,7 @@ void fillEmptySpots(int row);
 int generateNextBlockColor();
 int generateNextBlockRotation();
 void initGridBlock();
+void hardDropAppend();
 
 
 // GL Variables
@@ -226,12 +227,21 @@ static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 
 class Controller {
 public:
-	// The first element holds the center piece
+	// In coords or block arrays, the first element holds the center piece
+
+	// Coords of the controller block
 	Coord coords[4];
+
 	// Holds what coords will be after rotation
 	Coord rotationBuffer[4];
+
+	// Controller blocks to render
 	Block* blocks[4];
+
+	// Coords of where the projection is
 	Coord projectionBuffer[4];
+
+	// Projection blocks to render
 	Block* projectionBlocks[4];
 
 	Controller::Controller() {};
@@ -923,10 +933,6 @@ int main()
 
 	spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 
-	double startTime = glfwGetTime(); // time when game starts
-	double previousTime = startTime; // Time when previous update happened
-	double currentTime;
-	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -948,8 +954,9 @@ int main()
 		if (!gameInfo.isGamePaused())
 		{
 			// Update controller
-			currentTime = glfwGetTime() - startTime;
-			if (currentTime - previousTime > gameInfo.getDropSpeed())
+			gameInfo.updateElapsedTime(glfwGetTime());
+			// If its time to move the block down
+			if (gameInfo.getElapsedTime() > gameInfo.getDropSpeed())
 			{
 				// When the tetrimino can't move down
 				if (!controller.canMoveDown(controller.coords))
@@ -965,7 +972,7 @@ int main()
 					controller.moveDown(controller.coords);
 					updateGridBlocks();
 				}
-				previousTime += gameInfo.getDropSpeed();
+				gameInfo.setPreviousTime(glfwGetTime());
 			}
 		}
 		renderBlocks();
@@ -1056,6 +1063,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
 	{
 		gameInfo.invertGamePaused();
+	}
+	// Space bar to hard drop
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		hardDropAppend();
 	}
 }
 
@@ -1229,6 +1241,16 @@ void fillEmptySpots(int row) {
 	}
 }
 
+// When space bar is pressed, append block to its final position
+void hardDropAppend() {
+	for (int i = 0; i < 4; i++)
+	{
+		controller.coords[i] = controller.projectionBuffer[i];
+	}
+	appendToGrid();
+	// Decrement a previous time by a drop speed so a new block is guaranteed to spawn
+	gameInfo.setPreviousTime(gameInfo.getPreviousTime() - gameInfo.getDropSpeed());
+}
 
 // Spawn a new block from the top and set controller to it
 void spawnBlock(int colorValue, int rotation) {
