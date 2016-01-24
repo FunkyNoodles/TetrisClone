@@ -411,10 +411,6 @@ public:
 					}
 				}
 			}
-			else
-			{
-				return false;
-			}
 		}
 		return true;
 	}
@@ -435,10 +431,6 @@ public:
 						return false;
 					}
 				}
-			}
-			else
-			{
-				return false;
 			}
 		}
 		return true;
@@ -632,7 +624,7 @@ public:
 				isFirst = false;
 			}*/
 			isFirst = true;
-			//std::cout << isTouchingLeft(rotationBuffer) << std::endl;
+			std::cout << canMoveRight(rotationBuffer) << std::endl;
 			while (!canMoveLeft(rotationBuffer) && canMoveRight(rotationBuffer))
 			{
 				if (isTouchingLeft(rotationBuffer) && !isFirst)
@@ -659,13 +651,10 @@ public:
 				isFirst = false;
 			}
 			// Check again after translations
-			for (int i = 0; i < 4; i++)
+			if (isOutOfBoundThreeSides(rotationBuffer))
 			{
-				if (rotationBuffer[i].getRow() < 0 || rotationBuffer[i].getColumn() < 0 || rotationBuffer[i].getColumn() >= GRID_WIDTH)
-				{
-					// Still out of bound
-					return false;
-				}
+				// Still out of bound
+				return false;
 			}
 			if (isOverlapping(rotationBuffer))
 			{
