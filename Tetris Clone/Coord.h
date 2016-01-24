@@ -19,9 +19,9 @@ public:
 	void setRow(int row) {
 		this->row = row;
 	}
-	void operator=(const Coord & x) {
-		this->column = x.column;
-		this->row = x.row;
+	void operator=(const Coord & orig) {
+		this->column = orig.column;
+		this->row = orig.row;
 	}
 private:
 	int column, row;

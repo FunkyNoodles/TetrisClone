@@ -1,7 +1,5 @@
 #include "GameInfo.h"
 
-
-
 GameInfo::GameInfo()
 {
 }
@@ -46,6 +44,16 @@ void GameInfo::invertGamePaused()
 	isPaused = !isPaused;
 }
 
+bool GameInfo::isGameOver()
+{
+	return isOver;
+}
+
+void GameInfo::setGameOver(bool data)
+{
+	isOver = data;
+}
+
 void GameInfo::setPreviousTime(double time)
 {
 	previousTime = time;
@@ -70,4 +78,30 @@ void GameInfo::setElapsedTime(double time)
 double GameInfo::getElapsedTime()
 {
 	return currentElapsedTime;
+}
+
+void GameInfo::setLastPlaceBlockColorValue(unsigned int colorValue)
+{
+	colorValue %= 8;
+	this->lastPlacedBlockColorValue = colorValue;
+}
+
+int GameInfo::getLastPlaceBlockColorValue()
+{
+	return this->lastPlacedBlockColorValue;
+}
+
+void GameInfo::incrementStreak()
+{
+	streak++;
+}
+
+void GameInfo::resetStreak()
+{
+	streak = 0;
+}
+
+int GameInfo::getStreak()
+{
+	return this->streak;
 }

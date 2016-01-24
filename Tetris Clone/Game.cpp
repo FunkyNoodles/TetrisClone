@@ -209,7 +209,6 @@ GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
-bool isGameOver = false;
 /*
  * -1 - to be replaced by above row
  * 0 - nothing
@@ -271,7 +270,17 @@ public:
 		coords[2].setRow(r2);
 		coords[3].setColumn(c3);
 		coords[3].setRow(r3);
+
+		projectionBuffer[0].setColumn(c0);
+		projectionBuffer[0].setRow(r0);
+		projectionBuffer[1].setColumn(c1);
+		projectionBuffer[1].setRow(r1);
+		projectionBuffer[2].setColumn(c2);
+		projectionBuffer[2].setRow(r2);
+		projectionBuffer[3].setColumn(c3);
+		projectionBuffer[3].setRow(r3);
 		this->colorValue = colorValue;
+		
 		// Set blocks to render
 		for (int i = 0; i < 4; i++)
 		{
@@ -353,11 +362,14 @@ public:
 	bool Controller::canMoveDown(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			// Cehck if in range
-			if (isInBound(coords[i]))
+			// Check if in range
+			if (isInBoundThreeSides(coords[i]))
 			{
-				if (coords[i].getRow() == 0 || grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0) {
-					return false;
+				if (isInBound(coords[i]) || coords[i].getRow() == GRID_HEIGHT)
+				{
+					if (coords[i].getRow() == 0 || grid[coords[i].getColumn()][coords[i].getRow() - 1] != 0) {
+						return false;
+					}
 				}
 			}
 		}
@@ -369,10 +381,13 @@ public:
 		for (int i = 0; i < 4; i++)
 		{
 			// Cehck if in range
-			if (isInBound(coords[i]))
+			if (isInBoundThreeSides(coords[i]))
 			{
-				if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0) {
-					return false;
+				if (isInBound(coords[i]))
+				{
+					if (grid[coords[i].getColumn()][coords[i].getRow() + 1] != 0) {
+						return false;
+					}
 				}
 			}
 		}
@@ -383,15 +398,22 @@ public:
 	bool Controller::canMoveLeft(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			if (isInBound(coords[i]))
+			if (isInBoundThreeSides(coords[i]))
 			{
 				if (coords[i].getColumn() == 0)
 				{
 					return false;
 				}
-				if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0) {
-					return false;
+				if (isInBound(coords[i]))
+				{
+					if (grid[coords[i].getColumn() - 1][coords[i].getRow()] != 0) {
+						return false;
+					}
 				}
+			}
+			else
+			{
+				return false;
 			}
 		}
 		return true;
@@ -401,15 +423,22 @@ public:
 	bool Controller::canMoveRight(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
 		{
-			if (isInBound(coords[i]))
+			if (isInBoundThreeSides(coords[i]))
 			{
 				if (coords[i].getColumn() == GRID_WIDTH - 1)
 				{
 					return false;
 				}
-				if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0) {
-					return false;
+				if (isInBound(coords[i]))
+				{
+					if (grid[coords[i].getColumn() + 1][coords[i].getRow()] != 0) {
+						return false;
+					}
 				}
+			}
+			else
+			{
+				return false;
 			}
 		}
 		return true;
@@ -422,7 +451,7 @@ public:
 		{
 			for (int i = 0; i < 4; i++)
 			{
-				if (isInBound(coords[i]))
+				if (isInBoundThreeSides(coords[i]))
 				{
 					if (coords[i].getRow() == 0)
 					{
@@ -680,6 +709,15 @@ public:
 		return true;
 	}
 
+	// Check if a coord is in bound of the well three sides
+	bool isInBoundThreeSides(Coord coord) {
+		if (coord.getColumn() < 0 || coord.getColumn() >= GRID_WIDTH || coord.getRow() < 0)
+		{
+			return false;
+		}
+		return true;
+	}
+
 	// Check if a set of coords is out of bound of the well
 	bool isOutOfBound(Coord (&coords)[4]) {
 		for (int i = 0; i < 4; i++)
@@ -751,17 +789,20 @@ public:
 
 	// Update where project block is
 	void updateBlockProjection() {
+
 		// Set projection block position to controller
 		for (int i = 0; i < 4; i++)
 		{
 			projectionBuffer[i].setColumn(coords[i].getColumn());
 			projectionBuffer[i].setRow(coords[i].getRow());
 		}
+		
 		// Find where the projection is
-		while (!isTouchingDown(projectionBuffer))
+		while (canMoveDown(projectionBuffer))
 		{
 			moveDown(projectionBuffer);
 		}
+
 		// Update projection blocks render
 		for (int i = 0; i < 4; i++)
 		{
@@ -793,6 +834,30 @@ public:
 				delete projectionBlocks[i];
 				projectionBlocks[i] = nullptr;
 			}
+		}
+	}
+
+	// Move the coords to projected location
+	int Controller::appendDown() {
+		int skippedRows = 0;
+		skippedRows = coords[0].getRow() - projectionBuffer[0].getRow();
+		for (int i = 0; i < 4; i++)
+		{
+			coords[i] = projectionBuffer[i];
+			//coords[i].setColumn(projectionBuffer[i].getColumn());
+			//coords[i].setRow(projectionBuffer[i].getRow());
+			//std::cout << "erere" << std::endl;
+		}
+		updateBlocks();
+		return skippedRows;
+	}
+
+	// Print the coords
+	void Controller::printCoords() {
+		std::cout << "Controller Coords: " << std::endl;
+		for (int i = 0; i < 4; i++)
+		{
+			std::cout << i << ": x=" << coords[i].getColumn() << ", y=" << coords[i].getRow() << std::endl;
 		}
 	}
 private:
@@ -950,9 +1015,15 @@ int main()
 		glBindVertexArray(backVAO);
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-
+		
 		if (!gameInfo.isGamePaused())
 		{
+			if (gameInfo.isGameOver())
+			{
+				clearGrid();
+				gameInfo.setGameOver(false);
+				spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+			}
 			// Update controller
 			gameInfo.updateElapsedTime(glfwGetTime());
 			// If its time to move the block down
@@ -962,11 +1033,13 @@ int main()
 				if (!controller.canMoveDown(controller.coords))
 				{
 					blockDropped();
-					if (isGameOver)
+					if (gameInfo.isGameOver())
 					{
 						clearGrid();
+						
 					}
 					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+					updateGridBlocks();
 				}
 				else {
 					controller.moveDown(controller.coords);
@@ -1027,36 +1100,56 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	// Move block down
 	if (key == GLFW_KEY_DOWN && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveDown(controller.coords);
-		if (!controller.canMoveDown(controller.coords))
+		if (!gameInfo.isGamePaused())
 		{
-			return;
+			controller.moveDown(controller.coords);
+			/*if (!controller.canMoveDown(controller.coords))
+			{
+				return;
+			}*/
 		}
 	}
 	// Rotate block 90 degrees clockwise
 	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
 	{
-		controller.rotate();
-		controller.updateBlockProjection();
+		if (!gameInfo.isGamePaused())
+		{
+			controller.rotate();
+			controller.updateBlockProjection();
+		}
 	}
 	// Move block left
 	if (key == GLFW_KEY_LEFT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveLeft(controller.coords);
-		controller.updateBlockProjection();
-		if (!controller.canMoveDown(controller.coords))
+		if (!gameInfo.isGamePaused())
 		{
-			return;
+			controller.moveLeft(controller.coords);
+			controller.updateBlockProjection();
+			/*if (!controller.canMoveDown(controller.coords))
+			{
+				return;
+			}*/
 		}
 	}
 	// Move block right
 	if (key == GLFW_KEY_RIGHT && (action == GLFW_REPEAT || action == GLFW_PRESS))
 	{
-		controller.moveRight(controller.coords);
-		controller.updateBlockProjection();
-		if (!controller.canMoveDown(controller.coords))
+		if (!gameInfo.isGamePaused())
 		{
-			return;
+			controller.moveRight(controller.coords);
+			controller.updateBlockProjection();
+			/*if (!controller.canMoveDown(controller.coords))
+			{
+				return;
+			}*/
+		}
+	}
+	// Space bar to hard drop
+	if (key == GLFW_KEY_SPACE && (action == GLFW_REPEAT || action == GLFW_PRESS))
+	{
+		if (!gameInfo.isGamePaused())
+		{
+			hardDropAppend();
 		}
 	}
 	// Pause or Unpause game
@@ -1064,11 +1157,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		gameInfo.invertGamePaused();
 	}
-	// Space bar to hard drop
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-	{
-		hardDropAppend();
-	}
+	
 }
 
 // Clear grid data and render data
@@ -1116,6 +1205,7 @@ void renderBlocks() {
 	}
 }
 
+// Render helper function
 void renderBlock(Block* block) {
 	blockShader.Use();
 	glBindVertexArray(block->VAO);
@@ -1155,7 +1245,7 @@ void updateGridBlocks() {
 	}
 }
 
-// Transfer data from controller to grid
+// Transfer data from controller to grid, returns false if it a illegal append (i.e. coords are outisde the well)
 bool appendToGrid() {
 	for (int i = 0; i < 4; i++)
 	{
@@ -1243,11 +1333,8 @@ void fillEmptySpots(int row) {
 
 // When space bar is pressed, append block to its final position
 void hardDropAppend() {
-	for (int i = 0; i < 4; i++)
-	{
-		controller.coords[i] = controller.projectionBuffer[i];
-	}
-	appendToGrid();
+	controller.appendDown();
+	gameInfo.setGameOver(!appendToGrid());
 	// Decrement a previous time by a drop speed so a new block is guaranteed to spawn
 	gameInfo.setPreviousTime(gameInfo.getPreviousTime() - gameInfo.getDropSpeed());
 }
@@ -1416,18 +1503,40 @@ void blockDropped() {
 			rowsToCheck.push_back(controller.coords[i].getRow());
 		}
 	}
-	isGameOver = !appendToGrid();
+	gameInfo.setGameOver(!appendToGrid());
 	updateGridBlocks();
 
 	// Remove rows if needed
 	if (!rowsToCheck.empty())
 	{
+		// number of rows cleared
+		int rowsRemoved = 0;
+		
 		for (int i = rowsToCheck.size() - 1; i >= 0; i--)
 		{
 			if (checkRowFull(rowsToCheck[i]))
 			{
 				removeRow(rowsToCheck[i]);
+				rowsRemoved++;
 			}
+		}
+		
+		// Score gets updated here as lines are being removed
+		if (rowsRemoved == 4)
+		{
+			// a "Tetris", aka four lines get removed
+			if (gameInfo.getLastPlaceBlockColorValue() == 1)
+			{
+				// Back to back "Tetris"
+				gameInfo.addScore(400);
+			}
+			// Regular "Tetris"
+			gameInfo.addScore(800);
+		}
+		else
+		{
+			// Regular scoring
+			gameInfo.addScore(100 * rowsRemoved);
 		}
 		fallBlocks();
 		updateGridBlocks();
