@@ -130,6 +130,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Block.cpp" />
+    <ClCompile Include="Controller.cpp" />
     <ClCompile Include="GameInfo.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -149,6 +151,9 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Block.h" />
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="Controller.h" />
     <ClInclude Include="Coord.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="GameInfo.h" />
