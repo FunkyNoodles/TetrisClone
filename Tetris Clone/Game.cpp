@@ -45,25 +45,12 @@ int generateNextBlockRotation();
 void initGridBlock();
 void hardDropAppend();
 
-
 // GL Variables
 GLFWmonitor* monitor;
 GLFWvidmode* desktopMode;
 
 // Game Variables
 bool fullscreen = false;
-/*
- * -1 - to be replaced by above row
- * 0 - nothing
- * 1 - occupied by I
- * 2 - occupied by J
- * 3 - occupied by L
- * 4 - occupied by O
- * 5 - occupied by S
- * 6 - occupied by T
- * 7 - occupied by Z
- */
-
 
 static Block* gridBlock[GRID_WIDTH][GRID_HEIGHT];
 
@@ -242,7 +229,6 @@ int main()
 					if (gameInfo.isGameOver())
 					{
 						clearGrid();
-						
 					}
 					spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
 					updateGridBlocks();
@@ -258,10 +244,6 @@ int main()
 
 		if (gameInfo.isGamePaused())
 		{
-			
-			// glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			// glClearColor(0.5f, 0.5f, 0.5f, 0.1f);
-			// glClear(GL_COLOR_BUFFER_BIT);
 		}
 
 		// Swap the screen buffers
@@ -312,15 +294,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 	}
 	// Move block down
-	if (key == GLFW_KEY_DOWN && (action == GLFW_REPEAT || action == GLFW_PRESS))
+	if (key == GLFW_KEY_DOWN && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
 		if (!gameInfo.isGamePaused())
 		{
 			controller.moveDown(controller.coords);
-			/*if (!controller.canMoveDown(controller.coords))
-			{
-				return;
-			}*/
+			gameInfo.addScore(10);
 		}
 	}
 	// Rotate block 90 degrees clockwise
@@ -363,7 +342,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		gameInfo.invertGamePaused();
 	}
-	
+	// Restart the game
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+	{
+		gameInfo.setScore(0);
+		clearGrid();
+		gameInfo.setGameOver(false);
+		spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
+	}
 }
 
 // Clear grid data and render data
@@ -727,7 +713,7 @@ void blockDropped() {
 				rowsRemoved++;
 			}
 		}
-		
+		gameInfo.incrementStreak();
 		// Score gets updated here as lines are being removed
 		if (rowsRemoved == 4)
 		{
@@ -735,18 +721,21 @@ void blockDropped() {
 			if (gameInfo.getLastPlaceBlockColorValue() == 1)
 			{
 				// Back to back "Tetris"
-				gameInfo.addScore(400);
+				gameInfo.addScore(400 * gameInfo.getStreak());
 			}
 			// Regular "Tetris"
-			gameInfo.addScore(800);
+			gameInfo.addScore(800 * gameInfo.getStreak());
 		}
 		else
 		{
 			// Regular scoring
-			gameInfo.addScore(100 * rowsRemoved);
+			gameInfo.addScore(100 * rowsRemoved * gameInfo.getStreak());
 		}
 		fallBlocks();
 		updateGridBlocks();
+	}
+	else {
+		gameInfo.resetStreak();
 	}
 }
 
@@ -771,6 +760,7 @@ int generateNextBlockRotation() {
 	return dist(rng);
 }
 
+// Initialize grid block
 void initGridBlock() {
 	for (int i = 0; i < GRID_WIDTH; i++)
 	{

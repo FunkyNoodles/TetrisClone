@@ -126,6 +126,7 @@ public:
 	Controller::~Controller();
 
 	// Move the coords to projected location
+	// Return number of rows skipped
 	int Controller::appendDown();
 
 	// Print the coords
