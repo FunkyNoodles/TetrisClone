@@ -1,6 +1,7 @@
 // System
 #include <iostream>
 #include <math.h>
+#include <map>
 #include <random>
 #include <vector>
 // GLEW
@@ -25,6 +26,7 @@
 #include "GameInfo.h"
 #include "Block.h"
 #include "Controller.h"
+#include "TextRenderer.h"
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -59,7 +61,9 @@ int grid[GRID_WIDTH][GRID_HEIGHT];
 static Controller controller = Controller();
 static GameInfo gameInfo = GameInfo();
 Shader blockShader;
-// The MAIN function, from here we start the application and run the game loop
+
+TextRenderer * textRenderer;
+
 int main()
 {
 	// Init GLFW
@@ -91,6 +95,7 @@ int main()
 	// Build and compile shader program
 	Shader backColumnsShader = Shader(IDR_BACK_COLUMN_VERT, IDR_BACK_COLUMN_FRAG);
 	blockShader = Shader(IDR_BLOCK_VERT, IDR_BLOCK_FRAG);
+
 	// Basic tile information
 	int pixelX = 0; // number of pixels from left border
 	int pixelY = 0; // number of pixels from bottom border
@@ -100,6 +105,7 @@ int main()
 
 	// Set up vertices to draw background vertical columns for tiles to fall
 	GLdouble backColumnVertices[GRID_WIDTH * 4 * 6]; // Format: # of columns times four sets of three position and three color
+
 	// Set up indices to draw back as rectangles
 	GLuint backColumnsIndices[GRID_WIDTH * 3 * 2]; //012,123,456,567, etc...
 
@@ -185,6 +191,14 @@ int main()
 
 	glBindVertexArray(0); // Unbind VAO
 
+	//glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Text Renderer
+	textRenderer = new TextRenderer();
+	textRenderer->load("res/fonts/arial.ttf", 48);
+
 	clearGrid();
 
 	spawnBlock(generateNextBlockColor(), generateNextBlockRotation());
@@ -195,17 +209,21 @@ int main()
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 
-		std::cout << gameInfo.getScore() << std::endl;
+		//std::cout << gameInfo.getScore() << std::endl;
 
 		// Render
 		// Clear the colorbuffer
 		glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		textRenderer->renderText("This is a sample text", 10.0f, 10.0f, 1.0f, glm::vec3(0.5f,0.8f,0.2f));
+
 		backColumnsShader.Use();
 
 		// Draw back columns
 		glBindVertexArray(backVAO);
+		//glDrawArrays(GL_TRIANGLES, 0, 120);
+		//std::cout << sizeof(backColumnsIndices) / sizeof(GLuint) << std::endl;
 		glDrawElements(GL_TRIANGLES, sizeof(backColumnsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 		
@@ -256,6 +274,9 @@ int main()
 
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
+
+	// Other clean-ups
+	delete textRenderer;
 	return 0;
 }
 

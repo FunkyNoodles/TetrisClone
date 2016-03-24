@@ -30,11 +30,15 @@
     <ClCompile Include="Controller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TextRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="text1.bin">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="textVertexShader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -58,12 +62,16 @@
     <ClInclude Include="Controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TextRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="backColumnFragmentShader.frag" />
     <Text Include="backColumnVertexShader.vert" />
     <Text Include="blockFragmentShader.frag" />
     <Text Include="blockVertexShader.vert" />
+    <Text Include="textFragmentShader.frag" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc">

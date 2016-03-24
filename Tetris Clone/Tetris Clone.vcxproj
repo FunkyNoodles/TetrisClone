@@ -75,8 +75,8 @@
     <LibraryPath>D:\Resources\OpenGL\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>D:\Resources\OpenGL\lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>D:\Resources\OpenGL\include\GL;D:\Resources\OpenGL\include\GLFW;D:\Resources\Simple OpenGL Image Library\src;D:\Resources\glm-0.9.7.1\glm;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Resources\OpenGL\lib;D:\Resources\freetype-2.3.5-1-bin\lib\;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\Resources\OpenGL\include\GL;D:\Resources\OpenGL\include\GLFW;D:\Resources\Simple OpenGL Image Library\src;D:\Resources\glm-0.9.7.1\glm;D:\Resources\freetype-2.3.5-1-bin\include;D:\Resources\freetype-2.3.5-1-bin\include\freetype2\freetype;D:\Resources\freetype-2.3.5-1-bin\include\freetype2;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -111,8 +111,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>D:\Resources\OpenGL\lib\glfw3.lib;opengl32.lib;D:\Resources\OpenGL\lib\glew32sd.lib;D:\Resources\OpenGL\lib\glew32d.lib;D:\Resources\Simple OpenGL Image Library\lib\SOIL.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Resources\OpenGL\lib\glfw3.lib;opengl32.lib;D:\Resources\OpenGL\lib\glew32sd.lib;D:\Resources\OpenGL\lib\glew32d.lib;D:\Resources\Simple OpenGL Image Library\lib\SOIL.lib;%(AdditionalDependencies)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>D:\Resources\OpenGL\lib\glfw3.lib;opengl32.lib;D:\Resources\OpenGL\lib\glew32sd.lib;D:\Resources\OpenGL\lib\glew32d.lib;D:\Resources\Simple OpenGL Image Library\lib\SOIL.lib;D:\Resources\freetype-2.3.5-1-bin\lib\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>opengl32.lib;D:\Resources\OpenGL\lib\glew32sd.lib;D:\Resources\OpenGL\lib\glew32d.lib;D:\Resources\OpenGL\lib\glfw3.lib;D:\Resources\Simple OpenGL Image Library\lib\SOIL.lib;D:\Resources\freetype-2.3.5-1-bin\lib\;D:\Resources\freetype-2.3.5-1-bin\lib\freetype.lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -135,6 +135,7 @@
     <ClCompile Include="GameInfo.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="TextRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="backColumnFragmentShader.frag">
@@ -149,6 +150,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <FileType>Document</FileType>
     </Text>
+    <Text Include="textFragmentShader.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Block.h" />
@@ -158,6 +160,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="GameInfo.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="TextRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="blockVertexShader.vert">
@@ -167,6 +170,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="text1.bin" />
+    <None Include="textVertexShader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
